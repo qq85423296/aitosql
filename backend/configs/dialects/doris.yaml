@@ -1,0 +1,17 @@
+# Doris 能力卡（SSOT v3.2 §8.2 原文，默认注入；detected_version 由注册/摄取覆盖）
+engine: doris
+detected_version: "2.1"
+supports:
+  - BITMAP 系: bitmap_count/bitmap_union/bitmap_intersect
+  - HLL 系: hll_cardinality/hll_union
+  - 分桶函数: date_trunc/date_floor
+  - 窗口: LAG/LEAD/FIRST_VALUE
+  - 正则: regexp/regexp_extract
+notes:
+  - "反范式优先：允许适度冗余列，避免高频 JOIN 小维度表"
+  - "时间过滤下推：优先分区键等值/范围，避免函数包裹分区列"
+  - "jdbc catalog 外表性能差，仅作兜底（优先物化进内表）"
+forbidden:
+  - "禁止 UPDATE 无 WHERE（主键模型除外，仍需确认门）"
+  - "禁止 SELECT * FROM 大表（走明细抽样或列裁剪）"
+  - "禁止 INTO OUTFILE s3://（出境通道，R15 硬阻断）"

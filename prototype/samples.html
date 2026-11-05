@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AItosql · 样例库</title>
+<style>
+:root{
+  --bg-0:#0E1116; --bg-1:#151920; --bg-2:#1C222C; --bg-3:#232B38;
+  --border:#262D3A; --border-soft:#20262F;
+  --t1:#E7EAF0; --t2:#9BA4B4; --t3:#646E7F;
+  --accent:#6E9EFF; --accent-soft:rgba(110,158,255,.12); --accent-border:rgba(110,158,255,.28);
+  --red:#F27979; --red-soft:rgba(242,121,121,.10);
+  --amber:#F5B85C; --amber-soft:rgba(245,184,92,.10); --amber-border:rgba(245,184,92,.35);
+  --green:#4ADE9C; --green-soft:rgba(74,222,156,.10); --green-border:rgba(74,222,156,.35);
+  --mono:"JetBrains Mono","SF Mono",Consolas,"Courier New",monospace;
+  --sans:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+::selection{background:rgba(110,158,255,.32);color:#fff}
+html,body{height:100%}
+body{background:var(--bg-0);color:var(--t1);font-family:var(--sans);font-size:14px;line-height:1.6;overflow:hidden}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#2A3240;border-radius:5px;border:2px solid var(--bg-0)}
+::-webkit-scrollbar-track{background:transparent}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+.shell{display:flex;height:100vh}
+.rail{width:64px;flex-shrink:0;background:var(--bg-1);border-right:1px solid var(--border-soft);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:6px;z-index:30}
+.rail-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#3D6FD8,#6E9EFF);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:13px;color:#fff;margin-bottom:10px}
+.rail-btn{width:44px;height:44px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--t3);position:relative;transition:all .15s;text-decoration:none}
+.rail-btn:hover{background:var(--bg-2);color:var(--t2)}
+.rail-btn.active{color:var(--accent);background:var(--accent-soft)}
+.rail-btn.active::before{content:"";position:absolute;left:-10px;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.rail-btn svg{width:20px;height:20px}
+.rail-btn .lbl{font-size:10px;line-height:1}
+.rail-spacer{flex:1}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{height:52px;flex-shrink:0;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;padding:0 16px;gap:12px}
+.ds-switch{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-1);font-size:13px}
+.dialect-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;letter-spacing:.03em}
+.badge-doris{background:rgba(180,140,255,.14);color:#C4A1FF;border:1px solid rgba(180,140,255,.28)}
+.badge-mysql{background:rgba(45,212,191,.12);color:#2DD4BF;border:1px solid rgba(45,212,191,.26)}
+.badge-ch{background:rgba(245,184,92,.14);color:#F5B85C;border:1px solid rgba(245,184,92,.3)}
+.badge-off{background:rgba(154,164,180,.12);color:#9BA4B4;border:1px solid rgba(154,164,180,.28)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.route-pill{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);padding:5px 11px;border-radius:999px;border:1px solid var(--border);background:var(--bg-1)}
+.route-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(74,222,156,.6)}
+.route-pill svg{width:13px;height:13px;color:var(--green)}
+
+.page{flex:1;overflow-y:auto;padding:26px 32px}
+.page-inner{max-width:1180px;margin:0 auto}
+.page-head{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.head-actions{margin-left:auto;display:flex;gap:10px;align-items:center}
+.btn{font-size:13px;font-weight:600;padding:7px 16px;border-radius:8px;transition:all .12s;display:inline-flex;align-items:center;gap:6px}
+.btn svg{width:13px;height:13px}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:#84ACFF}
+.page-title{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.page-sub{font-size:13px;color:var(--t3);margin-bottom:22px}
+.page-sub b{color:var(--t2);font-weight:600}
+
+/* 机制说明条 */
+.mech-bar{display:flex;align-items:center;gap:10px;background:var(--accent-soft);border:1px solid var(--accent-border);border-radius:10px;padding:10px 16px;font-size:12.5px;color:#AFC9F5;margin-bottom:18px}
+.mech-bar svg{width:15px;height:15px;flex-shrink:0}
+
+/* 工具行 */
+.toolbar-row{display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.search-box{display:flex;align-items:center;gap:7px;background:var(--bg-1);border:1px solid var(--border);border-radius:8px;padding:7px 12px;width:260px;transition:border-color .12s}
+.search-box:focus-within{border-color:var(--accent-border)}
+.search-box svg{width:14px;height:14px;color:var(--t3);flex-shrink:0}
+.search-box input{flex:1;background:none;border:none;outline:none;color:var(--t1);font-size:13px}
+.search-box input::placeholder{color:var(--t3)}
+.filter-select{background:var(--bg-1);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--t2);font-size:13px;font-family:inherit;outline:none;cursor:pointer}
+.count-note{margin-left:auto;font-size:12px;color:var(--t3)}
+
+/* 样例表格 */
+.panel{background:var(--bg-1);border:1px solid var(--border-soft);border-radius:12px;overflow:hidden}
+table.dt{width:100%;border-collapse:collapse;font-size:13px}
+.dt th{text-align:left;padding:10px 16px;font-size:11px;font-weight:600;color:var(--t3);background:var(--bg-2);border-bottom:1px solid var(--border);letter-spacing:.04em;white-space:nowrap}
+.dt td{padding:11px 16px;border-bottom:1px solid var(--border-soft);vertical-align:middle}
+.dt tr:last-child td{border-bottom:none}
+.dt tbody tr{transition:background .12s}
+.dt tbody tr:hover{background:var(--bg-2)}
+.dt tbody tr.stale-row{opacity:.75}
+.q-cell{max-width:240px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dt td .muted{white-space:nowrap}
+.sql-cell{max-width:240px;font-family:var(--mono);font-size:11.5px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default}
+.ds-cell{display:flex;gap:6px;align-items:center;white-space:nowrap;flex-wrap:wrap}
+.ds-cell .ds-nm{font-weight:500;font-size:12.5px}
+.hit-cell{font-family:var(--mono);font-size:12px;text-align:right;color:var(--t2);white-space:nowrap}
+.hit-cell .zero{color:var(--t3)}
+.status-chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:999px}
+.status-chip.on{background:var(--green-soft);color:var(--green);border:1px solid rgba(74,222,156,.3)}
+.status-chip.off{background:var(--bg-3);color:var(--t3);border:1px solid var(--border)}
+.status-chip.stale{background:var(--amber-soft);color:var(--amber);border:1px solid var(--amber-border)}
+.status-chip .sd{width:5px;height:5px;border-radius:50%;background:currentColor}
+.muted{color:var(--t3);font-size:12px}
+.src-link{font-size:12px;color:var(--accent);cursor:pointer}
+.src-link:hover{text-decoration:underline}
+.row-acts{display:flex;gap:2px;align-items:center}
+.row-act{font-size:12px;color:var(--t2);padding:4px 9px;border-radius:6px;transition:all .12s;white-space:nowrap}
+.row-act:hover{background:var(--bg-3);color:var(--t1)}
+.row-act.danger{color:var(--red)}
+.row-act.danger:hover{background:var(--red-soft)}
+.row-act.accent{color:var(--accent)}
+.row-act.accent:hover{background:var(--accent-soft)}
+.row-act.confirm{color:var(--green)}
+.row-act.confirm:hover{background:var(--green-soft)}
+.stale-reason{margin-top:5px;font-size:11px;color:var(--amber);white-space:nowrap}
+.empty-box{padding:44px 20px;text-align:center;color:var(--t2);font-size:13px}
+.empty-box .empty-sub{display:block;margin-top:4px;font-size:12px;color:var(--t3)}
+.dt tbody tr.empty-row:hover{background:transparent}
+
+/* 开关 */
+.switch{width:34px;height:19px;border-radius:999px;background:var(--bg-3);border:1px solid var(--border);position:relative;transition:all .15s;flex-shrink:0;cursor:pointer}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--t3);transition:all .15s}
+.switch.on{background:rgba(74,222,156,.25);border-color:var(--green-border)}
+.switch.on::after{left:17px;background:var(--green)}
+
+/* 验证中 */
+.validating{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--t2)}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(110,158,255,.5)}50%{opacity:.5;box-shadow:0 0 0 4px rgba(110,158,255,0)}}
+
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--bg-3);border:1px solid var(--border);color:var(--t1);font-size:13px;padding:9px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:all .25s;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:99}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <nav class="rail">
+    <div class="rail-logo">AI</div>
+    <a class="rail-btn" href="index.html" title="查询">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="lbl">查询</span>
+    </a>
+    <a class="rail-btn" href="datasources.html" title="数据源">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+      <span class="lbl">数据源</span>
+    </a>
+    <a class="rail-btn active" href="samples.html" title="样例库">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+      <span class="lbl">样例库</span>
+    </a>
+    <a class="rail-btn" href="settings.html" title="设置">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg>
+      <span class="lbl">设置</span>
+    </a>
+    <div class="rail-spacer"></div>
+  </nav>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="ds-switch" onclick="toast('原型演示：切换数据源')">
+        <span class="dialect-badge badge-doris">Doris</span>生产分析库
+        <span style="color:var(--t3);font-size:10px;margin-left:2px">▾</span>
+      </button>
+      <div class="topbar-right">
+        <span class="route-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          仅本地 · qwen3-32b
+          <span class="dot"></span>
+        </span>
+      </div>
+    </header>
+
+    <div class="page">
+      <div class="page-inner">
+        <div class="page-head">
+          <span class="page-title">样例库</span>
+          <div class="head-actions">
+            <button class="btn btn-accent" onclick="toast('原型演示：手动新增样例（选数据源 + 问题 + SQL）')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              新增样例
+            </button>
+          </div>
+        </div>
+        <div class="page-sub">成功查询一键沉淀为「问题 → SQL」样例，作为后续生成的 few-shot 参考。</div>
+
+        <div class="mech-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+          <span>生成时自动取 <b>最多 3 条</b>相关样例作为参考；schema 变更后关联样例自动置为「过期」，<b>过期样例不参与生成</b>，需重新验证后启用。</span>
+        </div>
+
+        <div class="toolbar-row">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input placeholder="搜索问题或 SQL…" oninput="filterSamples()">
+          </div>
+          <select class="filter-select" id="dsFilter" onchange="filterSamples()">
+            <option value="all">全部数据源</option>
+            <option value="prod-doris">生产分析库 · Doris</option>
+            <option value="biz-mysql">业务主库 · MySQL</option>
+            <option value="log-ch">日志数仓 · ClickHouse</option>
+            <option value="fin-mysql">核心账务库 · MySQL（离线）</option>
+          </select>
+          <select class="filter-select" id="statusFilter" onchange="filterSamples()">
+            <option value="all">全部状态</option>
+            <option value="on">启用</option>
+            <option value="stale">过期</option>
+            <option value="off">已停用</option>
+          </select>
+          <span class="count-note" id="countNote"></span>
+        </div>
+
+        <div class="panel">
+          <table class="dt" id="sampleTable">
+            <thead><tr>
+              <th>问题</th><th>SQL 摘要</th><th>数据源</th><th>状态</th><th style="text-align:right">命中次数</th><th>最近验证</th><th>来源</th><th style="width:200px"></th>
+            </tr></thead>
+            <tbody>
+              <tr data-status="on" data-ds="prod-doris">
+                <td class="q-cell">上个月各渠道销售额环比</td>
+                <td class="sql-cell" title="WITH monthly AS (SELECT c.channel_name, DATE_TRUNC('month', o.created_at) AS month, ...">WITH monthly AS (SELECT c.channel_name, DATE_TRUNC(...</td>
+                <td><div class="ds-cell"><span class="ds-nm">生产分析库</span><span class="dialect-badge badge-doris">Doris</span></div></td>
+                <td><span class="status-chip on"><span class="sd"></span>启用</span></td>
+                <td class="hit-cell">23</td>
+                <td><span class="muted">2 小时前</span></td>
+                <td><span class="src-link" onclick="toast('原型演示：跳回来源会话')">会话</span></td>
+                <td><div class="row-acts">
+                  <span class="switch on" onclick="toggleSwitch(this)" title="停用"></span>
+                  <button class="row-act confirm" onclick="toast('原型演示：EXPLAIN 干跑复验')">重新验证</button>
+                  <button class="row-act danger" onclick="toast('原型演示：删除确认')">删除</button>
+                </div></td>
+              </tr>
+              <tr data-status="on" data-ds="biz-mysql">
+                <td class="q-cell">近 30 天每日新增用户趋势</td>
+                <td class="sql-cell" title="SELECT DATE(created_at) AS d, COUNT(*) FROM users WHERE created_at >= ...">SELECT DATE(created_at) AS d, COUNT(*) FROM use...</td>
+                <td><div class="ds-cell"><span class="ds-nm">业务主库</span><span class="dialect-badge badge-mysql">MySQL</span></div></td>
+                <td><span class="status-chip on"><span class="sd"></span>启用</span></td>
+                <td class="hit-cell">12</td>
+                <td><span class="muted">昨天</span></td>
+                <td><span class="src-link" onclick="toast('原型演示：跳回来源会话')">会话</span></td>
+                <td><div class="row-acts">
+                  <span class="switch on" onclick="toggleSwitch(this)" title="停用"></span>
+                  <button class="row-act confirm" onclick="toast('原型演示：EXPLAIN 干跑复验')">重新验证</button>
+                  <button class="row-act danger" onclick="toast('原型演示：删除确认')">删除</button>
+                </div></td>
+              </tr>
+              <tr data-status="stale" data-ds="prod-doris" id="staleRow1">
+                <td class="q-cell">高价值客户的复购间隔分布</td>
+                <td class="sql-cell" title="WITH repurchase AS (SELECT user_id, DATEDIFF(...">WITH repurchase AS (SELECT user_id, DATEDIFF(...</td>
+                <td><div class="ds-cell"><span class="ds-nm">生产分析库</span><span class="dialect-badge badge-doris">Doris</span></div></td>
+                <td class="status-td"><span class="status-chip stale"><span class="sd"></span>过期</span><div class="stale-reason">字段 vip_level 已删除</div></td>
+                <td class="hit-cell">8</td>
+                <td><span class="muted">3 天前</span></td>
+                <td><span class="src-link" onclick="toast('原型演示：跳回来源会话')">会话</span></td>
+                <td><div class="row-acts">
+                  <button class="row-act confirm" onclick="revalidate('staleRow1',this)">重新验证</button>
+                  <button class="row-act danger" onclick="toast('原型演示：删除确认')">删除</button>
+                </div></td>
+              </tr>
+              <tr data-status="stale" data-ds="prod-doris" id="staleRow2">
+                <td class="q-cell">退款率按月的异常波动排查</td>
+                <td class="sql-cell" title="SELECT month, refund_cnt / order_cnt AS rate FROM ...">SELECT month, refund_cnt / order_cnt AS rate FRO...</td>
+                <td><div class="ds-cell"><span class="ds-nm">生产分析库</span><span class="dialect-badge badge-doris">Doris</span></div></td>
+                <td class="status-td"><span class="status-chip stale"><span class="sd"></span>过期</span><div class="stale-reason">字段 refund_status 已改名</div></td>
+                <td class="hit-cell">5</td>
+                <td><span class="muted">3 天前</span></td>
+                <td><span class="src-link" onclick="toast('原型演示：跳回来源会话')">会话</span></td>
+                <td><div class="row-acts">
+                  <button class="row-act confirm" onclick="revalidate('staleRow2',this)">重新验证</button>
+                  <button class="row-act danger" onclick="toast('原型演示：删除确认')">删除</button>
+                </div></td>
+              </tr>
+              <tr data-status="on" data-ds="log-ch">
+                <td class="q-cell">订单履约时长分位数（P50/P95）</td>
+                <td class="sql-cell" title="SELECT PERCENTILE_APPROX(finish_time - create_time, ...)">SELECT PERCENTILE_APPROX(finish_time - create_...</td>
+                <td><div class="ds-cell"><span class="ds-nm">日志数仓</span><span class="dialect-badge badge-ch">ClickHouse</span></div></td>
+                <td><span class="status-chip on"><span class="sd"></span>启用</span></td>
+                <td class="hit-cell">3</td>
+                <td><span class="muted">1 周前</span></td>
+                <td><span class="src-link" onclick="toast('原型演示：跳回来源会话')">会话</span></td>
+                <td><div class="row-acts">
+                  <span class="switch on" onclick="toggleSwitch(this)" title="停用"></span>
+                  <button class="row-act confirm" onclick="toast('原型演示：EXPLAIN 干跑复验')">重新验证</button>
+                  <button class="row-act danger" onclick="toast('原型演示：删除确认')">删除</button>
+                </div></td>
+              </tr>
+              <tr data-status="off" data-ds="biz-mysql" id="offRow1">
+                <td class="q-cell">库存周转周报（旧口径）</td>
+                <td class="sql-cell" title="SELECT sku, turnover FROM inventory_weekly WHERE ...">SELECT sku, turnover FROM inventory_weekly WHE...</td>
+                <td><div class="ds-cell"><span class="ds-nm">业务主库</span><span class="dialect-badge badge-mysql">MySQL</span></div></td>
+                <td class="status-td"><span class="status-chip off"><span class="sd"></span>已停用</span></td>
+                <td class="hit-cell"><span class="zero" title="长期未命中，可考虑清理">0</span></td>
+                <td><span class="muted">2 周前</span></td>
+                <td><span class="muted">手动添加</span></td>
+                <td><div class="row-acts">
+                  <span class="switch" onclick="toggleSwitch(this)" title="启用"></span>
+                  <button class="row-act danger" onclick="toast('原型演示：删除确认')">删除</button>
+                </div></td>
+              </tr>
+              <tr data-status="on" data-ds="fin-mysql">
+                <td class="q-cell">月度应收应付对账差异</td>
+                <td class="sql-cell" title="SELECT period, SUM(amount_due) - SUM(amount_paid) AS gap FROM ar_ap_ledger GROUP BY period ...">SELECT period, SUM(amount_due) - SUM(amount_pa...</td>
+                <td><div class="ds-cell"><span class="ds-nm">核心账务库</span><span><span class="dialect-badge badge-mysql">MySQL</span> <span class="dialect-badge badge-off">离线</span></span></div></td>
+                <td><span class="status-chip on"><span class="sd"></span>启用</span></td>
+                <td class="hit-cell">2</td>
+                <td><span class="muted" title="离线数据源不支持 EXPLAIN 复验">离线库</span></td>
+                <td><span class="muted">手动添加</span></td>
+                <td><div class="row-acts">
+                  <span class="switch on" onclick="toggleSwitch(this)" title="停用"></span>
+                  <button class="row-act confirm" onclick="toast('离线数据源不支持 EXPLAIN 复验')">重新验证</button>
+                  <button class="row-act danger" onclick="toast('原型演示：删除确认')">删除</button>
+                </div></td>
+              </tr>
+              <tr class="empty-row" id="emptyRow" style="display:none"><td colspan="8"><div class="empty-box">没有匹配的样例<span class="empty-sub">试试调整数据源/状态筛选，或清空搜索词</span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+function toast(msg){
+  const t=document.getElementById('toastEl');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),1800);
+}
+function toggleSwitch(el){
+  el.classList.toggle('on');
+  const row=el.closest('tr');
+  const td=row.querySelector('.status-td')||row.querySelectorAll('td')[3];
+  if(el.classList.contains('on')){
+    td.innerHTML='<span class="status-chip on"><span class="sd"></span>启用</span>';
+    row.dataset.status='on';
+    toast('样例已启用，将参与生成参考');
+  }else{
+    td.innerHTML='<span class="status-chip off"><span class="sd"></span>已停用</span>';
+    row.dataset.status='off';
+    toast('样例已停用');
+  }
+  updateCount();
+}
+function revalidate(rowId,btn){
+  const row=document.getElementById(rowId);
+  const td=row.querySelector('.status-td');
+  td.innerHTML='<span class="validating"><span class="pulse-dot"></span>EXPLAIN 干跑验证中…</span>';
+  btn.disabled=true;btn.style.opacity='.4';
+  setTimeout(()=>{
+    td.innerHTML='<span class="status-chip on"><span class="sd"></span>启用</span>';
+    row.dataset.status='on';
+    row.classList.remove('stale-row');
+    const acts=btn.closest('.row-acts');
+    acts.innerHTML='<span class="switch on" onclick="toggleSwitch(this)" title="停用"></span>'
+      +'<button class="row-act confirm" onclick="toast(\'原型演示：EXPLAIN 干跑复验\')">重新验证</button>'
+      +'<button class="row-act danger" onclick="toast(\'原型演示：删除确认\')">删除</button>';
+    toast('验证通过，样例已重新启用');
+    updateCount();
+  },1400);
+}
+function filterSamples(){
+  const q=document.querySelector('.search-box input').value.trim().toLowerCase();
+  const f=document.getElementById('statusFilter').value;
+  const d=document.getElementById('dsFilter').value;
+  document.querySelectorAll('#sampleTable tbody tr:not(.empty-row)').forEach(r=>{
+    const okQ=!q||r.textContent.toLowerCase().includes(q);
+    const okF=f==='all'||r.dataset.status===f;
+    const okD=d==='all'||r.dataset.ds===d;
+    r.style.display=okQ&&okF&&okD?'':'none';
+  });
+  updateCount();
+}
+function updateCount(){
+  const rows=[...document.querySelectorAll('#sampleTable tbody tr:not(.empty-row)')];
+  const vis=rows.filter(r=>r.style.display!=='none');
+  const on=vis.filter(r=>r.dataset.status==='on').length;
+  const stale=vis.filter(r=>r.dataset.status==='stale').length;
+  document.getElementById('countNote').textContent=`显示 ${vis.length} 条（启用 ${on}，过期 ${stale}）`;
+  document.getElementById('emptyRow').style.display=vis.length?'none':'';
+}
+// 标记过期行样式 + 初始化计数
+document.querySelectorAll('#sampleTable tbody tr[data-status="stale"]').forEach(r=>r.classList.add('stale-row'));
+// 截断的问题单元格补全 title，悬停看全文
+document.querySelectorAll('.q-cell,.sql-cell').forEach(c=>{if(!c.title)c.title=c.textContent.trim();});
+// 从某个数据源上下文进入时（?ds=xxx），数据源筛选器预选该库
+const urlDs=new URLSearchParams(location.search).get('ds');
+if(urlDs){
+  const sel=document.getElementById('dsFilter');
+  if([...sel.options].some(o=>o.value===urlDs)){
+    sel.value=urlDs;
+    filterSamples();
+    toast('已按来源上下文筛选：'+sel.selectedOptions[0].text);
+  }
+}
+updateCount();
+
+/* ================= 键盘可达性：可点容器获焦 + Enter/Space 激活 ================= */
+(function(){
+  const SEL='.switch,.src-link';
+  const apply=()=>document.querySelectorAll(SEL).forEach(el=>{if(!el.hasAttribute('tabindex'))el.setAttribute('tabindex','0');});
+  apply();
+  new MutationObserver(apply).observe(document.body,{childList:true,subtree:true});
+  document.addEventListener('keydown',e=>{
+    if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches(SEL)){e.preventDefault();e.target.click();}
+  });
+})();
+</script>
+</body>
+</html>

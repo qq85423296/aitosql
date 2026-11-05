@@ -1,0 +1,61 @@
+/* ==========================================================================
+   tokens.css —— 唯一设计 token 来源（SSOT §11.3 / plan S1 / V3 守则）
+   深色（基准默认）+ 浅色（同名覆盖），值与原型 assets/prototype.css :root 逐字一致。
+   校验：pnpm verify:tokens（scripts/verify-tokens.mjs，V-2 闸口）。
+   全站组件只允许引用 var(--*)，禁裸 hex（stylelint.config.mjs 门禁）。
+   ========================================================================== */
+
+@import 'tailwindcss';
+
+:root{
+  --bg-0:#0E1116; --bg-1:#151920; --bg-2:#1C222C; --bg-3:#232B38;
+  --border:#262D3A; --border-soft:#20262F;
+  --t1:#E7EAF0; --t2:#9BA4B4; --t3:#646E7F;
+  --accent:#6E9EFF; --accent-soft:rgba(110,158,255,.12); --accent-border:rgba(110,158,255,.28);
+  --red:#F27979; --red-soft:rgba(242,121,121,.10); --red-border:rgba(242,121,121,.4);
+  --amber:#F5B85C; --amber-soft:rgba(245,184,92,.10); --amber-border:rgba(245,184,92,.35);
+  --green:#4ADE9C; --green-soft:rgba(74,222,156,.10); --green-border:rgba(74,222,156,.35);
+  --violet-soft:rgba(180,140,255,.14); --violet:#C4A1FF; --violet-border:rgba(180,140,255,.28);
+  --teal-soft:rgba(45,212,191,.12); --teal:#2DD4BF; --teal-border:rgba(45,212,191,.26);
+  --sql-bg:#0B0E13; --sql-code:#D6DEEB; --sql-ln:#3A4356;
+  --sql-k:#82AAFF; --sql-f:#89DDFF; --sql-s:#C3E88D; --sql-n:#F78C6C;
+  --logo-a:#3D6FD8; --logo-b:#6E9EFF;
+  --shadow:0 8px 30px rgba(0,0,0,.4);
+  --mono:"JetBrains Mono","SF Mono",Consolas,"Courier New",monospace;
+  --sans:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+  color-scheme:dark;
+}
+
+:root[data-theme="light"]{
+  --bg-0:#F4F6FA; --bg-1:#FFFFFF; --bg-2:#EEF1F6; --bg-3:#E2E8F0;
+  --border:#D6DDE7; --border-soft:#E3E8EF;
+  --t1:#1B2430; --t2:#48536A; --t3:#7C879B;
+  --accent:#3D6FD8; --accent-soft:rgba(61,111,216,.09); --accent-border:rgba(61,111,216,.32);
+  --red:#C94F4F; --red-soft:rgba(201,79,79,.08); --red-border:rgba(201,79,79,.38);
+  --amber:#A96B12; --amber-soft:rgba(201,138,31,.10); --amber-border:rgba(201,138,31,.40);
+  --green:#1D9E6B; --green-soft:rgba(29,158,107,.10); --green-border:rgba(29,158,107,.38);
+  --violet-soft:rgba(124,92,220,.10); --violet:#7C5CDC; --violet-border:rgba(124,92,220,.30);
+  --teal-soft:rgba(13,148,136,.10); --teal:#0D9488; --teal-border:rgba(13,148,136,.28);
+  --sql-bg:#F7F9FC; --sql-code:#31405C; --sql-ln:#9AA6BB;
+  --sql-k:#2456C4; --sql-f:#0E7490; --sql-s:#2F8F4E; --sql-n:#C0550F;
+  --logo-a:#3D6FD8; --logo-b:#6E9EFF;
+  --shadow:0 10px 30px rgba(30,45,70,.14);
+  color-scheme:light;
+}
+
+/* Tailwind v4 @theme 桥接（V3）：工具类 bg-bg-0 / text-t1 / border-border / font-mono 等
+   运行时仍指向上方 var(--*)，主题切换即时生效。 */
+@theme inline{
+  --color-bg-0:var(--bg-0); --color-bg-1:var(--bg-1); --color-bg-2:var(--bg-2); --color-bg-3:var(--bg-3);
+  --color-border:var(--border); --color-border-soft:var(--border-soft);
+  --color-t1:var(--t1); --color-t2:var(--t2); --color-t3:var(--t3);
+  --color-accent:var(--accent); --color-accent-soft:var(--accent-soft); --color-accent-border:var(--accent-border);
+  --color-red:var(--red); --color-red-soft:var(--red-soft); --color-red-border:var(--red-border);
+  --color-amber:var(--amber); --color-amber-soft:var(--amber-soft); --color-amber-border:var(--amber-border);
+  --color-green:var(--green); --color-green-soft:var(--green-soft); --color-green-border:var(--green-border);
+  --color-violet:var(--violet); --color-violet-soft:var(--violet-soft); --color-violet-border:var(--violet-border);
+  --color-teal:var(--teal); --color-teal-soft:var(--teal-soft); --color-teal-border:var(--teal-border);
+  --color-sql-bg:var(--sql-bg); --color-sql-code:var(--sql-code); --color-sql-ln:var(--sql-ln);
+  --color-sql-k:var(--sql-k); --color-sql-f:var(--sql-f); --color-sql-s:var(--sql-s); --color-sql-n:var(--sql-n);
+  --font-mono:var(--mono); --font-sans:var(--sans);
+}

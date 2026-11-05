@@ -1,0 +1,19 @@
+# PostgreSQL 能力卡（detected_version 由注册/摄取覆盖）
+engine: postgresql
+detected_version: "16"
+supports:
+  - CTE: WITH / WITH RECURSIVE
+  - 窗口: ROW_NUMBER/RANK/LAG/LEAD/FIRST_VALUE
+  - JSON 系: ->/->>/JSONB_EXTRACT_PATH/JSONB_BUILD_OBJECT
+  - 正则: ~ / REGEXP_REPLACE/SUBSTRING(... FROM ...)
+  - 数组: ARRAY_AGG/UNNEST/ANY
+  - 分组集: GROUPING SETS/ROLLUP/CUBE
+notes:
+  - "标识符区分大小写需双引号；别名/字段默认折叠小写"
+  - "时间过滤走 timestamptz 范围比较，避免 DATE(col)= 包裹（索引失效）"
+  - "大分页用键集分页（WHERE id > ?），避免深 OFFSET"
+  - "字符串拼接用 || 或 CONCAT；无 GROUP_CONCAT，用 STRING_AGG"
+forbidden:
+  - "禁止 COPY ... TO/FROM PROGRAM（服务端命令执行面）"
+  - "禁止 pg_read_file/pg_ls_dir 等服务端文件函数（R15）"
+  - "禁止 UPDATE/DELETE 无 WHERE（确认门升级）"

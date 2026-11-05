@@ -1,0 +1,42 @@
+# golden 用例 · Doris 方言（C1 扩充：SELECT/JOIN/窗口/聚合日期/安全拒绝）
+- id: doris_agg_month_sales
+  dialect: doris
+  question: 2026 年 9 月各渠道的订单量和销售额
+  sql: |
+    SELECT channel_id, COUNT(*) AS cnt, SUM(amount) AS amt
+    FROM orders
+    WHERE created_at >= '2026-09-01' AND created_at < '2026-10-01'
+    GROUP BY channel_id
+  expect_ast: {tables: [orders], where_has: ["created_at >= '2026-09-01'"]}
+- id: doris_join_order_user
+  dialect: doris
+  question: 每个用户的累计消费金额（关联用户表取昵称）
+  sql: |
+    SELECT u.nickname, SUM(o.amount) AS total
+    FROM orders o
+    JOIN users u ON o.user_id = u.id
+    WHERE o.is_test = 0
+    GROUP BY u.nickname
+  expect_ast: {tables: [orders, users], where_has: ["o.is_test = 0"]}
+- id: doris_window_rank_city
+  dialect: doris
+  question: 各城市内部 SKU 销售额排名
+  sql: |
+    SELECT city, sku, sales,
+           RANK() OVER (PARTITION BY city ORDER BY sales DESC) AS rk
+    FROM (
+      SELECT city, sku, SUM(amount) AS sales
+      FROM orders
+      GROUP BY city, sku
+    )
+  expect_ast: {has_window: "RANK", tables: [orders]}
+- id: doris_r15_explain_analyze
+  dialect: doris
+  question: 任意（安全拒绝：EXPLAIN ANALYZE 真实执行）
+  sql_inject: "EXPLAIN ANALYZE SELECT * FROM orders"
+  expect: {hard_block: "R15-B4", status: failed}
+- id: doris_r15_multi_statement
+  dialect: doris
+  question: 任意（安全拒绝：多语句）
+  sql_inject: "SELECT 1; SELECT 2"
+  expect: {hard_block: "R15-B1", status: failed}

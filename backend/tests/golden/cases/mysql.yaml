@@ -1,0 +1,42 @@
+# golden 用例 · MySQL 方言（C1 扩充：SELECT/JOIN/CTE窗口/聚合日期/安全拒绝）
+- id: mysql_daily_revenue
+  dialect: mysql
+  question: 查 2026 年 9 月每天的销售额合计
+  sql: |
+    SELECT DATE(created_at) AS dt, SUM(amount) AS amt
+    FROM orders
+    WHERE created_at >= '2026-09-01' AND created_at < '2026-10-01'
+    GROUP BY DATE(created_at)
+  expect_ast: {tables: [orders], where_has: ["created_at >= '2026-09-01'"]}
+- id: mysql_join_user_orders
+  dialect: mysql
+  question: 每个正式用户下过多少笔订单（剔除测试单）
+  sql: |
+    SELECT u.name, COUNT(o.id) AS cnt
+    FROM users u
+    JOIN orders o ON o.user_id = u.id
+    WHERE o.is_test = 0
+    GROUP BY u.name
+  expect_ast: {tables: [users, orders], where_has: ["o.is_test = 0"]}
+- id: mysql_cte_row_number
+  dialect: mysql
+  question: 各渠道销售额排名（先汇总再编号）
+  sql: |
+    WITH t AS (
+      SELECT channel_id, SUM(amount) AS amt
+      FROM orders
+      GROUP BY channel_id
+    )
+    SELECT channel_id, amt, ROW_NUMBER() OVER (ORDER BY amt DESC) AS rn
+    FROM t
+  expect_ast: {has_cte: true, has_window: "ROW_NUMBER", tables: [orders]}
+- id: mysql_r15_into_outfile
+  dialect: mysql
+  question: 任意（安全拒绝：文件写出）
+  sql_inject: "SELECT * FROM orders INTO OUTFILE '/tmp/orders.csv'"
+  expect: {hard_block: "R15-B2", status: failed}
+- id: mysql_r15_call_proc
+  dialect: mysql
+  question: 任意（安全拒绝：过程调用）
+  sql_inject: "CALL etl.nightly_refresh()"
+  expect: {hard_block: "R15-B5", status: failed}

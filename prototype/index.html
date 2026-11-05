@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AItosql · 查询</title>
+<style>
+:root{
+  --bg-0:#0E1116; --bg-1:#151920; --bg-2:#1C222C; --bg-3:#232B38;
+  --border:#262D3A; --border-soft:#20262F;
+  --t1:#E7EAF0; --t2:#9BA4B4; --t3:#646E7F;
+  --accent:#6E9EFF; --accent-soft:rgba(110,158,255,.12); --accent-border:rgba(110,158,255,.28);
+  --red:#F27979; --red-soft:rgba(242,121,121,.10);
+  --amber:#F5B85C; --amber-soft:rgba(245,184,92,.10); --amber-border:rgba(245,184,92,.35);
+  --green:#4ADE9C; --green-soft:rgba(74,222,156,.10); --green-border:rgba(74,222,156,.35);
+  --mono:"JetBrains Mono","SF Mono",Consolas,"Courier New",monospace;
+  --sans:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+::selection{background:rgba(110,158,255,.32);color:#fff}
+html,body{height:100%}
+body{background:var(--bg-0);color:var(--t1);font-family:var(--sans);font-size:14px;line-height:1.6;overflow:hidden}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#2A3240;border-radius:5px;border:2px solid var(--bg-0)}
+::-webkit-scrollbar-track{background:transparent}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+.shell{display:flex;height:100vh}
+.rail{width:64px;flex-shrink:0;background:var(--bg-1);border-right:1px solid var(--border-soft);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:6px;z-index:30}
+.rail-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#3D6FD8,#6E9EFF);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:13px;color:#fff;margin-bottom:10px}
+.rail-btn{width:44px;height:44px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--t3);position:relative;transition:all .15s;text-decoration:none}
+.rail-btn:hover{background:var(--bg-2);color:var(--t2)}
+.rail-btn.active{color:var(--accent);background:var(--accent-soft)}
+.rail-btn.active::before{content:"";position:absolute;left:-10px;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.rail-btn svg{width:20px;height:20px}
+.rail-btn .lbl{font-size:10px;line-height:1}
+.rail-spacer{flex:1}
+
+/* ============ 会话抽屉 ============ */
+.drawer{width:250px;flex-shrink:0;background:var(--bg-1);border-right:1px solid var(--border-soft);display:flex;flex-direction:column;transition:margin-left .22s cubic-bezier(.4,0,.2,1);overflow:hidden;z-index:20}
+.drawer.closed{margin-left:-250px}
+.drawer-head{padding:12px 12px 8px;display:flex;align-items:center;gap:8px}
+.drawer-title{font-size:12px;font-weight:600;color:var(--t2);letter-spacing:.06em}
+.drawer-count{font-size:10.5px;font-family:var(--mono);color:var(--t3)}
+.new-chat{margin-left:auto;width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--t3);border:1px solid var(--border);transition:all .12s}
+.new-chat:hover{color:var(--accent);border-color:var(--accent-border);background:var(--accent-soft)}
+.drawer-search{margin:0 12px 8px;display:flex;align-items:center;gap:6px;background:var(--bg-2);border:1px solid var(--border-soft);border-radius:8px;padding:5px 9px}
+.drawer-search svg{width:12px;height:12px;color:var(--t3);flex-shrink:0}
+.drawer-search input{flex:1;background:none;border:none;outline:none;color:var(--t1);font-size:12px;min-width:0}
+.drawer-search input::placeholder{color:var(--t3)}
+.drawer-body{flex:1;overflow-y:auto;padding:0 8px 8px}
+.sess-group{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t3);padding:12px 8px 4px;letter-spacing:.04em;user-select:none}
+.sess-group .g-cnt{font-family:var(--mono);font-size:10px}
+.sess-group.foldable{cursor:pointer}
+.sess-group .g-chev{width:11px;height:11px;transition:transform .18s}
+.sess-group.collapsed .g-chev{transform:rotate(-90deg)}
+.sess-item{position:relative;padding:7px 10px;border-radius:8px;cursor:pointer;transition:background .12s;margin-bottom:1px}
+.sess-item:hover{background:var(--bg-2)}
+.sess-item.active{background:var(--accent-soft)}
+.sess-item.active .sess-title{color:var(--accent)}
+.sess-title{font-size:13px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+.sess-title .pin-ic{width:11px;height:11px;color:var(--amber);flex-shrink:0}
+.sess-sub{font-size:10.5px;color:var(--t3);margin-top:1px;display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden}
+.sess-sub.hover-only{display:none}
+/* 悬停浮出提示卡（不挤占列表） */
+.sess-tip{position:fixed;z-index:100;background:var(--bg-3);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-size:11.5px;color:var(--t2);pointer-events:none;opacity:0;transition:opacity .12s;box-shadow:0 8px 24px rgba(0,0,0,.45);white-space:nowrap;display:flex;align-items:center;gap:6px}
+.sess-tip.show{opacity:1}
+.mini-badge{font-size:9px;padding:0 4px;border-radius:3px;border:1px solid var(--border);font-weight:600;color:var(--t3)}
+.sess-acts{position:absolute;right:6px;top:50%;transform:translateY(-50%);display:none;gap:1px;background:var(--bg-3);border:1px solid var(--border);border-radius:7px;padding:2px;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.sess-item:hover .sess-acts{display:flex}
+.sess-act{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--t3);transition:all .1s}
+.sess-act:hover{background:var(--bg-2);color:var(--t1)}
+.sess-act.danger:hover{color:var(--red);background:var(--red-soft)}
+.sess-act svg{width:12px;height:12px}
+.sess-item.confirming{background:var(--red-soft)}
+.sess-confirm{display:flex;align-items:center;gap:8px;font-size:12px;color:#EFA0A0;padding:2px 0}
+.sess-confirm button{font-size:11px;padding:2px 8px;border-radius:5px;font-weight:600}
+.sess-confirm .yes{background:var(--red);color:#1A0808}
+.sess-confirm .no{border:1px solid var(--border);color:var(--t2)}
+.sess-rename{background:var(--bg-2);border:1px solid var(--accent-border);border-radius:6px;padding:3px 8px;color:var(--t1);font-size:12.5px;outline:none;width:100%;font-family:inherit}
+
+/* ============ 主列 ============ */
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{height:52px;flex-shrink:0;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;padding:0 16px;gap:12px;background:var(--bg-0);position:relative}
+.icon-btn{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--t3);transition:all .12s}
+.icon-btn:hover{background:var(--bg-2);color:var(--t1)}
+.icon-btn svg{width:17px;height:17px}
+.ds-switch{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-1);font-size:13px;color:var(--t1);transition:border-color .12s}
+.ds-switch:hover{border-color:var(--accent-border)}
+.ds-switch .caret{color:var(--t3);font-size:10px;transition:transform .15s}
+.ds-switch.open .caret{transform:rotate(180deg)}
+.dialect-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;letter-spacing:.03em}
+.badge-doris{background:rgba(180,140,255,.14);color:#C4A1FF;border:1px solid rgba(180,140,255,.28)}
+.badge-mysql{background:rgba(45,212,191,.12);color:#2DD4BF;border:1px solid rgba(45,212,191,.26)}
+.badge-ch{background:rgba(245,184,92,.14);color:#F5B85C;border:1px solid rgba(245,184,92,.3)}
+.badge-off{background:rgba(154,164,180,.12);color:#9BA4B4;border:1px solid rgba(154,164,180,.28)}
+/* 数据源下拉 */
+.ds-dropdown{position:absolute;top:48px;left:16px;width:280px;background:var(--bg-2);border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 44px rgba(0,0,0,.5);z-index:50;padding:6px;display:none}
+.ds-dropdown.open{display:block;animation:rise .15s ease-out}
+@keyframes rise{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.ds-opt{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+.ds-opt:hover{background:var(--bg-3)}
+.ds-opt.cur{background:var(--accent-soft)}
+.ds-opt .ds-cn{color:var(--t1)}
+.ds-opt .ds-meta{margin-left:auto;font-size:10.5px;color:var(--t3)}
+.ds-opt .check{width:13px;height:13px;color:var(--accent);visibility:hidden}
+.ds-opt.cur .check{visibility:visible}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.route-pill{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);padding:5px 11px;border-radius:999px;border:1px solid var(--border);background:var(--bg-1)}
+.route-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(74,222,156,.6)}
+.route-pill svg{width:13px;height:13px;color:var(--green)}
+
+/* ============ 对话流 ============ */
+.stream{flex:1;overflow-y:auto;padding:28px 24px 20px}
+.stream-inner{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+.user-msg{display:flex;gap:10px;align-items:flex-start}
+.user-msg .u-avatar{width:28px;height:28px;border-radius:8px;background:var(--bg-3);display:flex;align-items:center;justify-content:center;color:var(--t2);flex-shrink:0;margin-top:2px}
+.user-msg .u-avatar svg{width:15px;height:15px}
+.user-bubble{background:var(--bg-2);border:1px solid var(--border-soft);border-radius:4px 14px 14px 14px;padding:10px 16px;font-size:14.5px}
+.user-bubble .u-ds{font-size:11px;color:var(--t3);margin-bottom:2px;display:flex;align-items:center;gap:5px}
+.answer{display:flex;flex-direction:column;gap:12px;animation:rise .3s ease-out}
+
+/* 空状态 */
+.empty-state{display:flex;flex-direction:column;align-items:center;padding:60px 20px;text-align:center}
+.empty-logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#3D6FD8,#6E9EFF);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;color:#fff;font-size:17px;margin-bottom:18px}
+.empty-title{font-size:18px;font-weight:700;margin-bottom:6px}
+.empty-sub{font-size:13px;color:var(--t3);margin-bottom:24px}
+.empty-examples{display:flex;flex-direction:column;gap:8px;width:100%;max-width:420px}
+.empty-ex{display:flex;align-items:center;gap:10px;padding:11px 16px;background:var(--bg-1);border:1px solid var(--border-soft);border-radius:11px;font-size:13px;color:var(--t2);cursor:pointer;transition:all .13s;text-align:left}
+.empty-ex:hover{border-color:var(--accent-border);color:var(--t1);background:var(--accent-soft)}
+.empty-ex svg{width:14px;height:14px;color:var(--t3);flex-shrink:0}
+
+/* 阶段进度卡 */
+.stage-card{background:var(--bg-1);border:1px solid var(--border-soft);border-radius:12px;padding:14px 18px;display:flex;flex-direction:column;gap:9px}
+.stage-row{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--t3);transition:color .2s}
+.stage-row.active{color:var(--t1)}
+.stage-row.done{color:var(--t2)}
+.stage-ic{width:17px;height:17px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.stage-row .spin{width:13px;height:13px;border:2px solid var(--accent-border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stage-row.done .stage-ic{color:var(--green)}
+.stage-row .st-time{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--t3)}
+.stage-stop{margin-top:4px;align-self:flex-end;font-size:12px;color:var(--t3);border:1px solid var(--border);border-radius:7px;padding:4px 12px;transition:all .12s}
+.stage-stop:hover{color:var(--red);border-color:var(--red)}
+
+/* 逻辑块 */
+.block{background:var(--bg-1);border:1px solid var(--border-soft);border-radius:12px;overflow:hidden}
+.block-head{display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:12px;font-weight:600;color:var(--t2);cursor:pointer;user-select:none;transition:background .12s}
+.block-head:hover{background:var(--bg-2)}
+.block-head svg{width:14px;height:14px;color:var(--t3);transition:transform .18s}
+.block-head .chev.open{transform:rotate(90deg)}
+.block-head .head-note{margin-left:auto;font-weight:400;color:var(--t3);font-size:11px}
+.block-body{border-top:1px solid var(--border-soft);padding:12px 16px;font-size:13.5px;color:var(--t2);display:none}
+.block-body.open{display:block}
+.block-body ol{padding-left:18px;display:flex;flex-direction:column;gap:5px}
+.block-body code{font-family:var(--mono);font-size:12px;background:var(--bg-3);padding:1px 5px;border-radius:4px;color:#A9C1E8}
+
+/* 假设 chips（可修正） */
+.assume-wrap{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.assume-label{font-size:12px;color:var(--t3);margin-right:2px;display:flex;align-items:center;gap:5px}
+.assume-label svg{width:13px;height:13px}
+.chip{font-size:12.5px;padding:4px 11px;border-radius:999px;background:var(--accent-soft);border:1px solid var(--accent-border);color:#AFC9F5;display:inline-flex;align-items:center;gap:6px;cursor:default;position:relative}
+.chip.guess{background:var(--amber-soft);border-color:var(--amber-border);color:#E8C48A}
+.chip .tag{font-size:10px;padding:0 5px;border-radius:4px;background:rgba(245,184,92,.18);color:var(--amber)}
+.chip code{font-family:var(--mono);font-size:11.5px}
+.chip .fix{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;color:var(--accent);margin-left:2px;cursor:pointer;opacity:.55;transition:opacity .12s}
+.chip .fix svg{width:10px;height:10px}
+.chip:hover .fix{opacity:1}
+.chip .fix:hover{text-decoration:underline}
+
+/* SQL 块 */
+.sql-block{background:var(--bg-1);border:1px solid var(--border-soft);border-radius:12px;overflow:hidden}
+.sql-block.write{border-color:var(--amber-border)}
+.sql-toolbar{display:flex;align-items:center;gap:6px;padding:8px 10px 8px 14px;border-bottom:1px solid var(--border-soft)}
+.sql-toolbar .lang{font-size:11px;font-family:var(--mono);color:var(--t3);letter-spacing:.05em}
+.sql-actions{margin-left:auto;display:flex;gap:4px}
+.sql-act{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2);padding:4px 10px;border-radius:7px;transition:all .12s;border:1px solid transparent;white-space:nowrap}
+.sql-act:hover{background:var(--bg-2);color:var(--t1)}
+.sql-act svg{width:13px;height:13px}
+.sql-act.primary{color:var(--accent);border-color:var(--accent-border);background:var(--accent-soft)}
+.sql-act.primary:hover{background:rgba(110,158,255,.2)}
+.sql-act.saved{color:var(--green);border-color:var(--green-border);background:var(--green-soft)}
+.sql-pre{padding:14px 0;font-family:var(--mono);font-size:13px;line-height:1.75;overflow-x:auto;background:#0B0E13}
+.sql-line{display:flex;padding:0 16px}
+.sql-line:hover{background:rgba(255,255,255,.02)}
+.sql-ln{width:26px;flex-shrink:0;color:#3A4356;text-align:right;margin-right:16px;user-select:none;font-size:12px;line-height:inherit}
+.sql-code{white-space:pre;color:#D6DEEB}
+.sql-code[contenteditable="true"]{outline:1px dashed var(--accent-border);outline-offset:4px;border-radius:4px}
+.k{color:#82AAFF;font-weight:600} .f{color:#89DDFF} .s{color:#C3E88D} .n{color:#F78C6C} .op{color:#89DDFF}
+
+/* 风险标记 */
+.risk-list{display:flex;flex-direction:column;gap:6px;padding:10px 14px;border-top:1px solid var(--border-soft)}
+.risk{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;padding:7px 11px;border-radius:8px}
+.risk svg{width:14px;height:14px;flex-shrink:0;margin-top:2px}
+.risk.red{background:var(--red-soft);color:#EFA0A0} .risk.red svg{color:var(--red)}
+.risk.yellow{background:var(--amber-soft);color:#E8C48A} .risk.yellow svg{color:var(--amber)}
+.risk b{font-weight:600}
+.risk .rule-id{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--t3);flex-shrink:0}
+
+/* 确认条 */
+.confirm-bar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:linear-gradient(0deg,var(--amber-soft),var(--amber-soft)),var(--bg-1);border-top:1px solid var(--amber-border);font-size:13px;color:#E8C48A}
+.confirm-bar svg{width:16px;height:16px;color:var(--amber);flex-shrink:0}
+.btn{font-size:13px;font-weight:600;padding:6px 16px;border-radius:8px;transition:all .12s;display:inline-flex;align-items:center;gap:6px}
+.btn svg{width:13px;height:13px}
+.btn-amber{background:var(--amber);color:#1A1408}
+.btn-amber:hover{background:#FFC96F}
+.btn-ghost{color:var(--t2);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--bg-2);color:var(--t1)}
+.confirm-bar .sp{margin-left:auto;display:flex;gap:8px}
+.exec-status{display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--border-soft);font-size:13px;color:var(--t2)}
+.pulse-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(110,158,255,.5)}50%{opacity:.5;box-shadow:0 0 0 5px rgba(110,158,255,0)}}
+.exec-done{color:var(--green);display:flex;align-items:center;gap:8px}
+.exec-done svg{width:15px;height:15px}
+
+/* 结果表格 */
+.result{border:1px solid var(--border-soft);border-radius:12px;overflow:hidden;background:var(--bg-1)}
+.result-head{display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:12px;font-weight:600;color:var(--t2);border-bottom:1px solid var(--border-soft)}
+.result-head svg{width:14px;height:14px;color:var(--t3)}
+.result-head .rh-acts{margin-left:auto;display:flex;gap:2px}
+.rh-act{font-size:12px;color:var(--t2);padding:3px 9px;border-radius:6px;display:flex;align-items:center;gap:4px;transition:all .12s}
+.rh-act:hover{background:var(--bg-2);color:var(--t1)}
+.rh-act svg{width:12px;height:12px}
+.rtable-wrap{overflow-x:auto}
+table.rtable{width:100%;border-collapse:collapse;font-size:13px}
+.rtable th{text-align:left;padding:8px 16px;font-size:11px;font-weight:600;color:var(--t3);background:var(--bg-2);border-bottom:1px solid var(--border);white-space:nowrap;letter-spacing:.03em;cursor:pointer;user-select:none}
+.rtable th:hover{color:var(--t1)}
+.rtable th .ty{font-weight:400;font-family:var(--mono);font-size:10px;margin-left:5px;color:var(--t3)}
+.rtable th .sort-ic{margin-left:4px;color:var(--accent);display:inline-flex;align-items:center;vertical-align:middle}
+.rtable td{padding:7px 16px;border-bottom:1px solid var(--border-soft);white-space:nowrap}
+.rtable tr:last-child td{border-bottom:none}
+.rtable tbody tr:hover{background:var(--bg-2)}
+.rtable td.num,.rtable th.num{text-align:right;font-family:var(--mono);font-size:12.5px}
+.rtable th.num{font-size:11px}
+.up{color:var(--green)} .down{color:var(--red)}
+.result-foot{display:flex;align-items:center;gap:14px;row-gap:4px;flex-wrap:wrap;padding:8px 14px;font-size:12px;color:var(--t3);border-top:1px solid var(--border-soft)}
+.result-foot .sep{width:1px;height:12px;background:var(--border)}
+
+/* 修正时间线 */
+.round-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--t2);padding:9px 14px;cursor:pointer;user-select:none}
+.round-head:hover{background:var(--bg-2)}
+.round-head svg.chev{width:14px;height:14px;color:var(--t3);transition:transform .18s}
+.round-head svg.chev.open{transform:rotate(90deg)}
+.round-track{display:flex;align-items:center;padding:4px 16px 12px}
+.round-node{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2)}
+.round-node .rn{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;font-family:var(--mono)}
+.round-node.fail .rn{background:var(--red-soft);color:var(--red);border:1px solid rgba(242,121,121,.35)}
+.round-node.ok .rn{background:var(--green-soft);color:var(--green);border:1px solid var(--green-border)}
+.round-node .rnote{font-size:11.5px;color:var(--t3)}
+.round-link{width:34px;height:1px;background:var(--border);margin:0 8px}
+.round-detail{margin:0 14px 12px;padding:10px 12px;background:var(--bg-2);border-radius:8px;font-size:12px;color:var(--t3);display:none}
+.round-detail.open{display:block}
+.round-detail code{font-family:var(--mono);font-size:11.5px;color:#EFA0A0}
+
+/* 追问建议 */
+.followups{display:flex;flex-wrap:wrap;gap:8px}
+.followup{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--t2);background:var(--bg-1);border:1px solid var(--border);border-radius:999px;padding:5px 13px;cursor:pointer;transition:all .13s}
+.followup:hover{border-color:var(--accent-border);color:var(--accent);background:var(--accent-soft)}
+.followup svg{width:12px;height:12px}
+
+.meta-note{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t3);padding:0 2px}
+.meta-note svg{width:13px;height:13px}
+.meta-note .timing{margin-left:auto;font-family:var(--mono);font-size:11px}
+
+/* 澄清门（高风险歧义） */
+.clarify-block{background:var(--bg-1);border:1px solid var(--amber-border);border-radius:12px;overflow:hidden}
+.clarify-head{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:13px;font-weight:600;color:var(--amber);border-bottom:1px solid var(--border-soft)}
+.clarify-head svg{width:15px;height:15px}
+.clarify-head .cl-tag{margin-left:auto;font-size:10px;padding:2px 8px;border-radius:4px;background:var(--amber-soft);border:1px solid var(--amber-border);font-weight:600}
+.clarify-body{padding:13px 16px;font-size:13px;color:var(--t2)}
+.clarify-body code{font-family:var(--mono);font-size:12px;background:var(--bg-3);padding:1px 5px;border-radius:4px;color:#A9C1E8}
+.clarify-opts{display:flex;flex-direction:column;gap:8px;padding:0 16px 14px}
+.clarify-opt{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg-2);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:13px;color:var(--t1);transition:all .13s;text-align:left}
+.clarify-opt:hover{border-color:var(--amber-border);background:var(--amber-soft)}
+.clarify-opt .co-title{font-weight:600}
+.clarify-opt .co-sub{font-size:11.5px;color:var(--t3);margin-left:2px}
+.clarify-opt .co-code{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--t3)}
+.clarify-resolved{display:flex;align-items:center;gap:9px;padding:12px 16px;border-top:1px solid var(--border-soft);font-size:12.5px;color:var(--green)}
+.clarify-resolved svg{width:15px;height:15px;flex-shrink:0}
+.clarify-resolved .pref{margin-left:auto;font-size:11px;color:var(--t3)}
+
+/* 断连恢复横幅 */
+.banner{display:flex;align-items:center;gap:9px;background:linear-gradient(0deg,var(--amber-soft),var(--amber-soft)),var(--bg-1);border:1px solid var(--amber-border);border-radius:11px;padding:9px 14px;font-size:12.5px;color:#E8C48A}
+.banner>svg{width:14px;height:14px;color:var(--amber);flex-shrink:0}
+.banner .b-acts{margin-left:auto;display:flex;gap:6px}
+.banner .b-btn{font-size:11.5px;padding:3px 10px;border-radius:6px;border:1px solid var(--amber-border);color:#E8C48A;transition:background .12s}
+.banner .b-btn:hover{background:var(--amber-soft)}
+.banner .b-x{color:var(--t3);padding:2px 6px;border-radius:5px;font-size:14px}
+.banner .b-x:hover{color:var(--t1);background:var(--bg-2)}
+/* 会话压缩提示条 */
+.compact-note{border:1px dashed var(--border);border-radius:11px;background:var(--bg-1);font-size:12px;color:var(--t3)}
+.compact-note .cn-line{display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;transition:color .12s}
+.compact-note .cn-line:hover{color:var(--t2)}
+.compact-note .cn-line svg{width:14px;height:14px;flex-shrink:0}
+.compact-note .cn-toggle{margin-left:auto;font-size:11px;color:var(--accent);padding:2px 9px;border-radius:5px;border:1px solid transparent;transition:all .12s}
+.compact-note .cn-line:hover .cn-toggle{border-color:var(--accent-border);background:var(--accent-soft)}
+.compact-note .cn-body{display:none;border-top:1px dashed var(--border);padding:10px 14px 12px}
+.compact-note.open .cn-body{display:block}
+.compact-note .cn-title{font-size:10.5px;font-weight:700;color:var(--t3);letter-spacing:.06em;margin-bottom:5px}
+.compact-note .cn-body p{font-size:12px;line-height:1.7;color:var(--t2);margin:0}
+
+/* 错误卡（模型离线/生成失败） */
+.err-card{background:var(--bg-1);border:1px solid rgba(242,121,121,.4);border-radius:12px;overflow:hidden}
+.err-head{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:13px;font-weight:600;color:var(--red);border-bottom:1px solid var(--border-soft)}
+.err-head svg{width:15px;height:15px}
+.err-head .err-tag{margin-left:auto;font-size:10px;padding:2px 8px;border-radius:4px;background:var(--red-soft);border:1px solid rgba(242,121,121,.3);font-weight:600}
+.err-body{padding:12px 16px;font-size:13px;color:var(--t2)}
+.err-body code{font-family:var(--mono);font-size:12px;background:var(--bg-3);padding:1px 5px;border-radius:4px;color:#EFA0A0}
+.err-acts{display:flex;gap:8px;padding:0 16px 14px}
+
+/* 结果空态 */
+.result-empty{padding:30px 16px;text-align:center;color:var(--t3);font-size:13px}
+.result-empty svg{width:22px;height:22px;color:var(--t3);margin-bottom:6px}
+.verify-warn-head{color:var(--amber)!important}
+.ck-ok{color:var(--green);font-weight:700}
+.ck-bad{color:var(--red);font-weight:700}
+
+/* ============ 输入框 ============ */
+.composer-wrap{padding:12px 24px 18px;background:linear-gradient(180deg,transparent,var(--bg-0) 30%)}
+.composer{max-width:760px;margin:0 auto;background:var(--bg-1);border:1px solid var(--border);border-radius:16px;padding:12px 14px 10px;transition:border-color .15s}
+.composer:focus-within{border-color:var(--accent-border);box-shadow:0 0 0 3px rgba(110,158,255,.08)}
+.composer textarea{width:100%;background:none;border:none;resize:none;color:var(--t1);font-family:inherit;font-size:14.5px;line-height:1.55;max-height:160px;outline:none;caret-color:var(--accent)}
+.composer textarea::placeholder{color:var(--t3)}
+.composer-bar{display:flex;align-items:center;gap:8px;margin-top:8px}
+.composer-ds{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);padding:3px 10px;border-radius:999px;border:1px solid var(--border);background:var(--bg-2);cursor:pointer;transition:all .12s}
+.composer-ds:hover{border-color:var(--accent-border)}
+.composer-hint{font-size:11px;color:var(--t3);margin-left:4px}
+.composer-hint kbd{font-family:var(--mono);font-size:10px;background:var(--bg-3);padding:1px 5px;border-radius:4px;border:1px solid var(--border)}
+.send-btn{margin-left:auto;width:32px;height:32px;border-radius:9px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0}
+.send-btn:hover{background:#84ACFF;transform:translateY(-1px)}
+.send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.send-btn svg{width:16px;height:16px}
+
+/* ============ 右侧面板 ============ */
+.side{width:320px;flex-shrink:0;background:var(--bg-1);border-left:1px solid var(--border-soft);display:flex;flex-direction:column;transition:margin-right .22s cubic-bezier(.4,0,.2,1);overflow:hidden}
+.side.closed{margin-right:-320px}
+.side-tabs{display:flex;border-bottom:1px solid var(--border-soft)}
+.side-tab{flex:1;padding:11px 0;text-align:center;font-size:12.5px;font-weight:600;color:var(--t3);border-bottom:2px solid transparent;transition:all .12s}
+.side-tab.active{color:var(--t1);border-bottom-color:var(--accent)}
+.side-body{flex:1;overflow-y:auto}
+.side-search{margin:12px;display:flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--border-soft);border-radius:8px;padding:6px 10px}
+.side-search svg{width:14px;height:14px;color:var(--t3)}
+.side-search input{flex:1;background:none;border:none;outline:none;color:var(--t1);font-size:12.5px}
+.side-search input::placeholder{color:var(--t3)}
+.side-mode{margin:0 12px 10px;font-size:11px;color:var(--t3);display:flex;align-items:center;gap:5px}
+.side-mode svg{width:12px;height:12px;color:var(--amber)}
+.tree{padding:0 8px 16px}
+.tree-table{margin-bottom:2px}
+.tree-row{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:7px;font-size:13px;color:var(--t2);cursor:pointer;transition:background .12s}
+.tree-row:hover{background:var(--bg-2);color:var(--t1)}
+.tree-row svg{width:13px;height:13px;color:var(--t3);flex-shrink:0}
+.tree-row .t-name{font-weight:600;color:var(--t1);font-family:var(--mono);font-size:12px}
+.tree-row .t-comment{margin-left:auto;font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px}
+.tree-row .t-add{width:20px;height:20px;border-radius:5px;display:none;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0}
+.tree-row:hover .t-add{display:flex}
+.tree-row .t-add:hover{background:var(--accent-soft)}
+.tree-cols{margin-left:26px;border-left:1px solid var(--border-soft);padding-left:8px;display:none}
+.tree-cols.open{display:block}
+.tree-col{display:flex;align-items:center;gap:6px;padding:4px 8px;font-size:12px;color:var(--t2)}
+.tree-col .cn{font-family:var(--mono);font-size:11.5px}
+.tree-col .ct{font-family:var(--mono);font-size:10px;color:var(--t3)}
+.tree-col .cc{margin-left:auto;font-size:10.5px;color:var(--t3);max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qd{padding:14px 16px}
+.qd-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-soft);font-size:12.5px}
+.qd-row:last-child{border-bottom:none}
+.qd-row .k2{color:var(--t3)}
+.qd-row .v2{color:var(--t1);font-family:var(--mono);font-size:12px}
+.qd-row .v2.plain{font-family:var(--sans)}
+.qd-stage{display:flex;justify-content:space-between;font-size:11.5px;color:var(--t2);padding:4px 0}
+.qd-stage .tm{font-family:var(--mono);color:var(--t3)}
+.hidden{display:none!important}
+
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--bg-3);border:1px solid var(--border);color:var(--t1);font-size:13px;padding:9px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:all .25s;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:99}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(max-width:1200px){.side{position:fixed;right:0;top:0;bottom:0;z-index:40;box-shadow:-12px 0 40px rgba(0,0,0,.45)}.side.closed{margin-right:-320px}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ===== 导航轨 ===== -->
+  <nav class="rail">
+    <div class="rail-logo">AI</div>
+    <a class="rail-btn active" href="index.html" title="查询">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="lbl">查询</span>
+    </a>
+    <a class="rail-btn" href="datasources.html" title="数据源">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+      <span class="lbl">数据源</span>
+    </a>
+    <a class="rail-btn" href="samples.html" title="样例库">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+      <span class="lbl">样例库</span>
+    </a>
+    <a class="rail-btn" href="settings.html" title="设置">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg>
+      <span class="lbl">设置</span>
+    </a>
+    <div class="rail-spacer"></div>
+    <button class="rail-btn" title="收起会话列表" onclick="toggleDrawer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+    </button>
+  </nav>
+
+  <!-- ===== 会话抽屉 ===== -->
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <span class="drawer-title">会话</span>
+      <span class="drawer-count" id="sessCount"></span>
+      <button class="new-chat" title="新会话" onclick="newSession()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+    <div class="drawer-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input placeholder="搜索会话…（Ctrl K）" id="sessSearch" oninput="renderSessions()">
+    </div>
+    <div class="drawer-body" id="sessBody"></div>
+  </aside>
+
+  <!-- ===== 主列 ===== -->
+  <div class="main">
+    <header class="topbar">
+      <button class="ds-switch" id="dsSwitch" onclick="toggleDsMenu(event)">
+        <span class="dialect-badge badge-doris" id="dsBadge">Doris</span>
+        <span id="dsName">生产分析库</span>
+        <span class="caret">▾</span>
+      </button>
+      <div class="ds-dropdown" id="dsDropdown">
+        <div class="ds-opt cur" onclick="pickDs(this,'生产分析库','badge-doris','Doris')">
+          <span class="dialect-badge badge-doris">Doris</span><span class="ds-cn">生产分析库</span>
+          <span class="ds-meta">87 表</span>
+          <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+        <div class="ds-opt" onclick="pickDs(this,'业务主库','badge-mysql','MySQL')">
+          <span class="dialect-badge badge-mysql">MySQL</span><span class="ds-cn">业务主库</span>
+          <span class="ds-meta">42 表</span>
+          <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+        <div class="ds-opt" onclick="pickDs(this,'日志数仓','badge-ch','ClickHouse')">
+          <span class="dialect-badge badge-ch">ClickHouse</span><span class="ds-cn">日志数仓</span>
+          <span class="ds-meta">156 表</span>
+          <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+        <div class="ds-opt" onclick="pickDs(this,'核心账务库','badge-off','离线')">
+          <span class="dialect-badge badge-off">离线</span><span class="ds-cn">核心账务库</span>
+          <span class="ds-meta">仅生成不执行</span>
+          <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="route-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          仅本地 · qwen3-32b
+          <span class="dot"></span>
+        </span>
+        <button class="icon-btn" title="上下文面板" onclick="toggleSide()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="stream" id="stream">
+      <div class="stream-inner" id="streamInner">
+
+        <!-- 断连恢复横幅（SSE 断线重连后从 checkpoint 续播） -->
+        <div class="banner" id="resumeBanner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/></svg>
+          连接曾中断，已从断点续播 · 会话与执行状态完好（thread q_01J8X4K2ME）
+          <div class="b-acts">
+            <button class="b-x" title="关闭" onclick="document.getElementById('resumeBanner').remove()">×</button>
+          </div>
+        </div>
+
+        <!-- 会话压缩提示条（早期轮次已压缩为滚动摘要，压缩前事实已抢救入记忆） -->
+        <div class="compact-note" id="compactNote">
+          <div class="cn-line" onclick="toggleCompactSummary()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg>
+            <span>早期 34 轮已压缩为摘要；压缩前 2 条事实已存入记忆，原文保留在历史记录</span>
+            <span class="cn-toggle" id="cnToggle">查看摘要</span>
+          </div>
+          <div class="cn-body" id="cnBody">
+            <div class="cn-title">滚动摘要（随提示词注入 · 第 4 段）</div>
+            <p>用户在分析生产分析库（Doris）的渠道与订单主题：已确认「收入」= 含税口径、「上个月」= 自然月整月；多次使用 orders JOIN channels 按渠道聚合；曾导出 9 月渠道明细 CSV。早期轮次还核对过 refunds 表的退款口径与 orders 的 join 关系。</p>
+          </div>
+        </div>
+
+        <!-- ===== 问答 1：成功（含修正时间线） ===== -->
+        <div class="user-msg">
+          <div class="u-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg></div>
+          <div class="user-bubble">
+            <div class="u-ds"><span class="dialect-badge badge-doris">Doris</span>生产分析库</div>
+            上个月各渠道的订单量和销售额，环比增长率是多少？
+          </div>
+        </div>
+
+        <div class="answer">
+          <div class="block">
+            <div class="block-head" onclick="toggleBlock(this)">
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+              查询逻辑
+              <span class="head-note">关联 orders × channels，按自然月分组，LAG 窗口算环比</span>
+            </div>
+            <div class="block-body">
+              <ol>
+                <li>用 <code>orders</code> 关联 <code>channels</code> 取渠道名，关联键 <code>orders.channel_id = channels.id</code>（推测，无外键）</li>
+                <li>时间范围取 2026-08-01 ~ 2026-10-01 两个月，环比需要上月作基准</li>
+                <li>只统计有效订单：<code>status IN ('paid','shipped','done')</code></li>
+                <li>CTE 先按月×渠道聚合出订单量与 GMV，外层用 <code>LAG() OVER (PARTITION BY 渠道 ORDER BY 月)</code> 算环比</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="assume-wrap">
+            <span class="assume-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18h6m-5 3h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>
+              假设 4 条
+            </span>
+            <span class="chip">「上个月」→ 2026-09-01 ~ 09-30<span class="fix" onclick="fixAssume('上个月的时间范围')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>修正</span></span>
+            <span class="chip">环比基准 = 2026-08<span class="fix" onclick="fixAssume('环比基准')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>修正</span></span>
+            <span class="chip">销售额 = SUM(<code>amount</code>)，含税<span class="fix" onclick="fixAssume('销售额口径')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>修正</span></span>
+            <span class="chip guess">channel_id → channels.id<span class="tag">推测</span><span class="fix" onclick="fixAssume('channel_id 的关联方式')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>修正</span></span>
+          </div>
+
+          <div class="sql-block">
+            <div class="sql-toolbar">
+              <span class="lang">SQL · doris</span>
+              <div class="sql-actions">
+                <button class="sql-act" onclick="copySql(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  复制
+                </button>
+                <button class="sql-act" onclick="editSql(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>
+                  编辑重跑
+                </button>
+                <button class="sql-act" onclick="saveSample(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  存为样例
+                </button>
+                <button class="sql-act primary" onclick="toast('原型演示：重新执行')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3z"/></svg>
+                  执行
+                </button>
+              </div>
+            </div>
+            <div class="sql-pre"><div class="sql-line"><span class="sql-ln">1</span><span class="sql-code"><span class="k">WITH</span> monthly <span class="k">AS</span> (</span></div>
+<div class="sql-line"><span class="sql-ln">2</span><span class="sql-code">  <span class="k">SELECT</span></span></div>
+<div class="sql-line"><span class="sql-ln">3</span><span class="sql-code">    c.channel_name,</span></div>
+<div class="sql-line"><span class="sql-ln">4</span><span class="sql-code">    <span class="f">DATE_TRUNC</span>(<span class="s">'month'</span>, o.created_at) <span class="k">AS</span> month,</span></div>
+<div class="sql-line"><span class="sql-ln">5</span><span class="sql-code">    <span class="f">COUNT</span>(<span class="op">*</span>) <span class="k">AS</span> order_cnt,</span></div>
+<div class="sql-line"><span class="sql-ln">6</span><span class="sql-code">    <span class="f">SUM</span>(o.amount) <span class="k">AS</span> gmv</span></div>
+<div class="sql-line"><span class="sql-ln">7</span><span class="sql-code">  <span class="k">FROM</span> orders o</span></div>
+<div class="sql-line"><span class="sql-ln">8</span><span class="sql-code">  <span class="k">JOIN</span> channels c <span class="k">ON</span> o.channel_id <span class="op">=</span> c.id</span></div>
+<div class="sql-line"><span class="sql-ln">9</span><span class="sql-code">  <span class="k">WHERE</span> o.created_at <span class="op">&gt;=</span> <span class="s">'2026-08-01'</span></span></div>
+<div class="sql-line"><span class="sql-ln">10</span><span class="sql-code">    <span class="k">AND</span> o.created_at <span class="op">&lt;</span> <span class="s">'2026-10-01'</span></span></div>
+<div class="sql-line"><span class="sql-ln">11</span><span class="sql-code">    <span class="k">AND</span> o.status <span class="k">IN</span> (<span class="s">'paid'</span>, <span class="s">'shipped'</span>, <span class="s">'done'</span>)</span></div>
+<div class="sql-line"><span class="sql-ln">12</span><span class="sql-code">    <span class="k">AND</span> o.is_test <span class="op">=</span> <span class="n">0</span> <span class="k">AND</span> o.is_deleted <span class="op">=</span> <span class="n">0</span></span></div>
+<div class="sql-line"><span class="sql-ln">13</span><span class="sql-code">  <span class="k">GROUP BY</span> <span class="n">1</span>, <span class="n">2</span></span></div>
+<div class="sql-line"><span class="sql-ln">14</span><span class="sql-code">)</span></div>
+<div class="sql-line"><span class="sql-ln">15</span><span class="sql-code"><span class="k">SELECT</span></span></div>
+<div class="sql-line"><span class="sql-ln">16</span><span class="sql-code">  channel_name, month, order_cnt, gmv,</span></div>
+<div class="sql-line"><span class="sql-ln">17</span><span class="sql-code">  <span class="f">ROUND</span>((gmv <span class="op">/</span> <span class="f">LAG</span>(gmv) <span class="k">OVER</span> (<span class="k">PARTITION BY</span> channel_name <span class="k">ORDER BY</span> month) <span class="op">-</span> <span class="n">1</span>) <span class="op">*</span> <span class="n">100</span>, <span class="n">1</span>) <span class="k">AS</span> gmv_mom_pct</span></div>
+<div class="sql-line"><span class="sql-ln">18</span><span class="sql-code"><span class="k">FROM</span> monthly</span></div>
+<div class="sql-line"><span class="sql-ln">19</span><span class="sql-code"><span class="k">ORDER BY</span> channel_name, month;</span></div></div>
+          </div>
+
+          <div class="result">
+            <div class="result-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg>
+              查询结果
+              <div class="rh-acts">
+                <button class="rh-act" onclick="copyReviewPack(this)" title="复制：问题/口径假设/SQL/执行与数据时间/行数/扫描量/风险标记"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 12l2 2 4-4m5.6 2.6a9 9 0 1 1-17.2 0A9 9 0 0 1 21.6 12z" opacity=".4"/><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2M15 3h6v6"/></svg>复核包</button>
+                <button class="rh-act" onclick="toast('原型演示：复制为 Markdown')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button>
+                <button class="rh-act" onclick="toast('原型演示：导出 CSV')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg>导出 CSV</button>
+              </div>
+            </div>
+            <div class="rtable-wrap">
+              <table class="rtable" id="demoTable">
+                <thead><tr>
+                  <th onclick="sortTable(this,0)">channel_name<span class="ty">varchar</span><span class="sort-ic"></span></th>
+                  <th onclick="sortTable(this,1)">month<span class="ty">datetime</span><span class="sort-ic"></span></th>
+                  <th class="num" onclick="sortTable(this,2,true)">order_cnt<span class="ty">bigint</span><span class="sort-ic"></span></th>
+                  <th class="num" onclick="sortTable(this,3,true)">gmv<span class="ty">decimal</span><span class="sort-ic"></span></th>
+                  <th class="num" onclick="sortTable(this,4,true)">gmv_mom<span class="ty">double</span><span class="sort-ic"></span></th>
+                </tr></thead>
+                <tbody id="demoTbody"></tbody>
+              </table>
+            </div>
+            <div class="result-foot">
+              <span>8 行</span><span class="sep"></span>
+              <span>执行 1.2s</span><span class="sep"></span>
+              <span title="EXPLAIN 估计扫描行数">扫描 ~84.2 万行</span><span class="sep"></span>
+              <span title="结果中业务时间的最大值">数据截至 2026-09-30</span><span class="sep"></span>
+              <span>生成 4.1s · 校验 0.3s</span><span class="sep"></span>
+              <span>LIMIT 1000 · 未截断</span>
+            </div>
+          </div>
+
+          <!-- 结果校验（借鉴：不基于"跑通了"停止，而基于"校验过了"停止） -->
+          <div class="block">
+            <div class="block-head" onclick="toggleBlock(this)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ADE9C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
+              结果校验 · 通过
+              <span class="head-note">未通过将自动回退重试 1 次，仍不过则照常交付并标注「未验证」</span>
+            </div>
+            <div class="block-body">
+              <ol style="list-style:none;padding-left:0">
+                <li><span class="ck-ok">✓</span> 行数非零（8 行）</li>
+                <li><span class="ck-ok">✓</span> 与口径一致：GMV 按指标标准过滤了测试单与已删除单</li>
+                <li><span class="ck-ok">✓</span> 明细汇总 = 总量（两月 GMV 合计与订单流水总额偏差 0.00%）</li>
+                <li><span class="ck-ok">✓</span> 分区裁剪：WHERE 命中分区键 <code>created_at</code>，未全分区扫描</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="block">
+            <div class="round-head" onclick="toggleRound(this)">
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+              修正回路 · 2 轮收敛
+            </div>
+            <div class="round-track">
+              <div class="round-node fail"><span class="rn">1</span><span class="rnote">列名错误</span></div>
+              <div class="round-link"></div>
+              <div class="round-node ok"><span class="rn">2</span><span class="rnote">成功 · 1.2s</span></div>
+            </div>
+            <div class="round-detail" id="round-detail">
+              第 1 次尝试误用列 <code>o.channel</code>（实际为 <code>o.channel_id</code>），引擎报错已脱敏回喂；第 2 次修正关联键后通过校验并执行成功。
+            </div>
+          </div>
+
+          <div class="meta-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+            schema 共 87 表 · 检索命中 12 表，tokens 3,214
+            <span class="timing">总耗时 5.6s</span>
+          </div>
+
+          <div class="followups">
+            <button class="followup" onclick="askFollowup('按渠道钻取到城市维度的明细')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M8 7h9v9"/></svg>
+              按渠道钻取到城市维度
+            </button>
+            <button class="followup" onclick="askFollowup('只看短视频渠道的每日明细')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M8 7h9v9"/></svg>
+              只看短视频渠道每日明细
+            </button>
+            <button class="followup" onclick="askFollowup('把环比改成同比去年同月')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M8 7h9v9"/></svg>
+              环比改成同比去年同月
+            </button>
+          </div>
+        </div>
+
+        <!-- ===== 问答 2：写操作确认门 ===== -->
+        <div class="user-msg">
+          <div class="u-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg></div>
+          <div class="user-bubble">
+            <div class="u-ds"><span class="dialect-badge badge-doris">Doris</span>生产分析库</div>
+            把 9 月份的测试订单都标记成已删除
+          </div>
+        </div>
+
+        <div class="answer">
+          <div class="assume-wrap">
+            <span class="assume-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18h6m-5 3h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>
+              假设 2 条
+            </span>
+            <span class="chip">「9 月份」→ 2026-09-01 ~ 09-30</span>
+            <span class="chip">测试订单 = <code>is_test = 1</code></span>
+          </div>
+
+          <div class="sql-block write">
+            <div class="sql-toolbar">
+              <span class="lang">SQL · doris</span>
+              <div class="sql-actions">
+                <button class="sql-act" onclick="copySql(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  复制
+                </button>
+                <button class="sql-act" onclick="editSql(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>
+                  编辑重跑
+                </button>
+              </div>
+            </div>
+            <div class="sql-pre"><div class="sql-line"><span class="sql-ln">1</span><span class="sql-code"><span class="k">UPDATE</span> orders</span></div>
+<div class="sql-line"><span class="sql-ln">2</span><span class="sql-code"><span class="k">SET</span> is_deleted <span class="op">=</span> <span class="n">1</span></span></div>
+<div class="sql-line"><span class="sql-ln">3</span><span class="sql-code"><span class="k">WHERE</span> is_test <span class="op">=</span> <span class="n">1</span></span></div>
+<div class="sql-line"><span class="sql-ln">4</span><span class="sql-code">  <span class="k">AND</span> created_at <span class="op">&gt;=</span> <span class="s">'2026-09-01'</span></span></div>
+<div class="sql-line"><span class="sql-ln">5</span><span class="sql-code">  <span class="k">AND</span> created_at <span class="op">&lt;</span> <span class="s">'2026-10-01'</span>;</span></div></div>
+            <div class="risk-list">
+              <div class="risk red">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+                <span><b>写操作</b> · UPDATE 将修改数据，Doris 无事务，执行后不可回滚</span>
+                <span class="rule-id">rule#06</span>
+              </div>
+              <div class="risk yellow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+                <span>未使用主键条件，预计影响 <b>1,284 行</b>（基于 is_test 估算）</span>
+                <span class="rule-id">rule#05</span>
+              </div>
+            </div>
+            <div class="confirm-bar" id="confirmBar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              此语句将修改数据，确认后执行
+              <div class="sp">
+                <button class="btn btn-ghost" onclick="cancelWrite()">取消</button>
+                <button class="btn btn-amber" onclick="confirmWrite()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  我理解风险，确认执行
+                </button>
+              </div>
+            </div>
+            <div class="exec-status hidden" id="execBar"><span class="pulse-dot"></span>执行中…</div>
+            <div class="exec-status hidden" id="doneBar">
+              <span class="exec-done">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
+                已执行 · 影响 1,284 行 · 用时 0.8s
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 问答 3：高风险歧义 → 澄清门 ===== -->
+        <div class="user-msg">
+          <div class="u-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg></div>
+          <div class="user-bubble">
+            <div class="u-ds"><span class="dialect-badge badge-doris">Doris</span>生产分析库</div>
+            本月的收入是多少？
+          </div>
+        </div>
+
+        <div class="answer">
+          <div class="clarify-block" id="clarifyBlock">
+            <div class="clarify-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3m.1 4h.01"/></svg>
+              需要先确认口径（高影响歧义，已暂停生成）
+              <span class="cl-tag">impact: high</span>
+            </div>
+            <div class="clarify-body">
+              「收入」在语义层命中 <b>两个历史口径版本</b>，选错会得到差一个量级的结果。低影响歧义（如「本月」= 10-01 ~ 10-31）已按假设先行，仅此项需要你裁决：
+            </div>
+            <div class="clarify-opts" id="clarifyOpts">
+              <button class="clarify-opt" onclick="resolveClarify('含税口径')">
+                <span class="co-title">含税口径</span>
+                <span class="co-sub">成交视角，含退款前金额</span>
+                <span class="co-code">SUM(amount) WHERE status IN ('paid','shipped','done')</span>
+              </button>
+              <button class="clarify-opt" onclick="resolveClarify('净收入口径')">
+                <span class="co-title">净收入口径</span>
+                <span class="co-sub">财务视角，扣除退款</span>
+                <span class="co-code">SUM(amount) − SUM(refunds.amount)</span>
+              </button>
+              <button class="clarify-opt" onclick="resolveClarify('custom')">
+                <span class="co-title" style="color:var(--t3)">都不是，我来描述口径…</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 问答 4：模型离线（失败态） ===== -->
+        <div class="user-msg">
+          <div class="u-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg></div>
+          <div class="user-bubble">
+            <div class="u-ds"><span class="dialect-badge badge-doris">Doris</span>生产分析库</div>
+            本周 GMV 环比上周呢？
+          </div>
+        </div>
+        <div class="answer">
+          <div class="err-card">
+            <div class="err-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+              生成失败 · 本地模型端点无响应
+              <span class="err-tag">schema 已就绪 · 卡在「生成」节点</span>
+            </div>
+            <div class="err-body">
+              端点 <code>http://127.0.0.1:11434</code> 连续 2 次无响应（各超时 10s），自动降级重试 1 次仍失败。<br>
+              建议：启动 Ollama 后点「重试」（从断点续跑，不重新检索 schema）；或临时把生成路由切到已配置的云提供商。
+            </div>
+            <div class="err-acts">
+              <button class="btn btn-ghost" onclick="toast('原型演示：从 checkpoint 续跑生成节点')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>
+                重试（断点续跑）
+              </button>
+              <button class="btn btn-ghost" onclick="location.href='settings.html#g-route'">去设置切换路由</button>
+            </div>
+          </div>
+          <div class="meta-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+            本次消耗 0 tokens · 会话状态已入 checkpoint，恢复后自动从「生成」节点续跑
+          </div>
+        </div>
+
+        <!-- ===== 问答 5：0 行结果（校验未通过仍交付） ===== -->
+        <div class="user-msg">
+          <div class="u-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg></div>
+          <div class="user-bubble">
+            <div class="u-ds"><span class="dialect-badge badge-doris">Doris</span>生产分析库</div>
+            查一下 10 月 13 日 SEM 渠道的退款订单明细
+          </div>
+        </div>
+        <div class="answer">
+          <div class="assume-wrap">
+            <span class="assume-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18h6m-5 3h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>
+              假设 2 条
+            </span>
+            <span class="chip">退款明细 = refunds ⋈ orders ⋈ channels</span>
+            <span class="chip guess">「SEM 渠道」= channel_id = 2<span class="tag">推测</span><span class="fix" onclick="fixAssume('SEM 渠道对应的枚举值')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>修正</span></span>
+          </div>
+          <div class="sql-block">
+            <div class="sql-toolbar"><span class="lang">SQL · doris</span>
+              <div class="sql-actions">
+                <button class="sql-act" onclick="copySql(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button>
+                <button class="sql-act" onclick="editSql(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>编辑重跑</button>
+              </div>
+            </div>
+            <div class="sql-pre"><div class="sql-line"><span class="sql-ln">1</span><span class="sql-code"><span class="k">SELECT</span> r.id, r.order_id, r.amount, r.created_at</span></div>
+<div class="sql-line"><span class="sql-ln">2</span><span class="sql-code"><span class="k">FROM</span> refunds r</span></div>
+<div class="sql-line"><span class="sql-ln">3</span><span class="sql-code"><span class="k">JOIN</span> orders o <span class="k">ON</span> r.order_id <span class="op">=</span> o.id</span></div>
+<div class="sql-line"><span class="sql-ln">4</span><span class="sql-code"><span class="k">WHERE</span> o.channel_id <span class="op">=</span> <span class="n">2</span></span></div>
+<div class="sql-line"><span class="sql-ln">5</span><span class="sql-code">  <span class="k">AND</span> r.created_at <span class="op">&gt;=</span> <span class="s">'2026-10-13'</span> <span class="k">AND</span> r.created_at <span class="op">&lt;</span> <span class="s">'2026-10-14'</span></span></div>
+<div class="sql-line"><span class="sql-ln">6</span><span class="sql-code"><span class="k">ORDER BY</span> r.created_at <span class="k">DESC</span> <span class="k">LIMIT</span> <span class="n">1000</span>;</span></div></div>
+          </div>
+          <div class="result">
+            <div class="result-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg>
+              查询结果
+            </div>
+            <div class="result-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8 11h6"/></svg>
+              <div>0 行 · 该条件下没有数据</div>
+            </div>
+            <div class="result-foot">
+              <span>0 行</span><span class="sep"></span>
+              <span>执行 0.4s</span><span class="sep"></span>
+              <span>扫描 ~2.1 万行</span><span class="sep"></span>
+              <span>数据截至 2026-10-13 23:59</span>
+            </div>
+          </div>
+          <div class="block">
+            <div class="block-head verify-warn-head" onclick="toggleBlock(this)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+              结果校验 · 未通过，已照常交付并标注「未验证」
+              <span class="head-note">自动回退重试 1 次（放宽状态过滤）仍为 0 行</span>
+            </div>
+            <div class="block-body">
+              <ol style="list-style:none;padding-left:0">
+                <li><span class="ck-bad">✗</span> 行数为 0（首次执行）</li>
+                <li><span class="ck-bad">✗</span> 回退重试：放宽 <code>channel_id = 2</code> 为全渠道后仍 0 行 → 当日确无退款</li>
+                <li><span class="ck-ok">✓</span> 分区裁剪正常（refunds.created_at 月分区命中）</li>
+                <li>可能原因：10-13 该渠道确实无退款订单；若与预期不符，请检查渠道枚举假设</li>
+              </ol>
+            </div>
+          </div>
+          <div class="followups">
+            <button class="followup" onclick="askFollowup('放宽到全渠道再看一遍 10 月 13 日的退款')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M8 7h9v9"/></svg>放宽到全渠道再看</button>
+            <button class="followup" onclick="askFollowup('近 7 天 SEM 渠道的退款趋势')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M8 7h9v9"/></svg>看近 7 天趋势</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== 输入框 ===== -->
+    <div class="composer-wrap">
+      <div class="composer">
+        <textarea rows="2" id="composerInput" placeholder="问点什么…  试试：「统计近 30 天每日新增用户」"></textarea>
+        <div class="composer-bar">
+          <button class="composer-ds" onclick="toggleDsMenu(event)">
+            <span class="dialect-badge badge-doris" id="composerBadge">Doris</span><span id="composerDsName">生产分析库</span>
+          </button>
+          <span class="composer-hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> 发送 · 右侧 Schema 树可插入表名</span>
+          <button class="send-btn" id="sendBtn" title="发送" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5m0 0-6 6m6-6 6 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 右侧上下文面板 ===== -->
+  <aside class="side" id="side">
+    <div class="side-tabs">
+      <button class="side-tab active" onclick="switchTab(this,'schemaPane')">Schema</button>
+      <button class="side-tab" onclick="switchTab(this,'detailPane')">查询详情</button>
+    </div>
+    <div class="side-body">
+      <div id="schemaPane">
+        <div class="side-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input placeholder="搜索表或字段…" oninput="filterTree(this.value)">
+        </div>
+        <div class="side-mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+          检索模式，命中 12 / 87 表 · 悬停表名可插入输入框
+        </div>
+        <div class="tree" id="tree"></div>
+      </div>
+      <div id="detailPane" class="hidden">
+        <div class="qd">
+          <div class="qd-row"><span class="k2">query_id</span><span class="v2">q_01J8X4K2ME</span></div>
+          <div class="qd-row"><span class="k2">总用时</span><span class="v2">5.6s</span></div>
+          <div class="qd-row"><span class="k2">tokens</span><span class="v2">3,214</span></div>
+          <div class="qd-row"><span class="k2">扫描量</span><span class="v2">~84.2 万行</span></div>
+          <div class="qd-row"><span class="k2">数据时间</span><span class="v2">2026-09-30</span></div>
+          <div class="qd-row"><span class="k2">分区裁剪</span><span class="v2 plain" style="color:var(--green)">已命中 created_at</span></div>
+          <div class="qd-row"><span class="k2">注入模式</span><span class="v2 plain">检索（命中 12 表）</span></div>
+          <div class="qd-row"><span class="k2">模型路由</span><span class="v2 plain">本地 · qwen3-32b</span></div>
+          <div class="qd-row"><span class="k2">修正轮次</span><span class="v2">2</span></div>
+          <div class="qd-row"><span class="k2">缓存</span><span class="v2 plain">未命中</span></div>
+          <div style="margin-top:12px;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.05em">耗时分解</div>
+          <div class="qd-stage"><span>schema 检索</span><span class="tm">0.4s</span></div>
+          <div class="qd-stage"><span>LLM 生成（第 1 轮）</span><span class="tm">2.8s</span></div>
+          <div class="qd-stage"><span>校验 + 执行（失败）</span><span class="tm">0.9s</span></div>
+          <div class="qd-stage"><span>LLM 修正（第 2 轮）</span><span class="tm">1.3s</span></div>
+          <div class="qd-stage"><span>校验 + 执行（成功）</span><span class="tm">1.2s</span></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="sess-tip" id="sessTip"></div>
+<div class="toast" id="toastEl"></div>
+
+<script>
+/* ================= 通用 ================= */
+function toast(msg){const t=document.getElementById('toastEl');t.textContent=msg;t.classList.add('show');clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),1800);}
+function toggleCompactSummary(){
+  const n=document.getElementById('compactNote');
+  n.classList.toggle('open');
+  document.getElementById('cnToggle').textContent=n.classList.contains('open')?'收起摘要':'查看摘要';
+}
+function toggleDrawer(){document.getElementById('drawer').classList.toggle('closed');}
+function toggleSide(){document.getElementById('side').classList.toggle('closed');}
+function toggleBlock(head){head.querySelector('.chev').classList.toggle('open');head.nextElementSibling.classList.toggle('open');}
+function toggleRound(head){head.querySelector('.chev').classList.toggle('open');document.getElementById('round-detail').classList.toggle('open');}
+
+/* ================= 会话管理 ================= */
+let SESSIONS=[
+  {id:'s1',title:'上个月各渠道销售额环比',ds:'生产分析库',badge:'Doris',time:'10:24',group:'今天',pinned:true,archived:false},
+  {id:'s2',title:'标记 9 月测试订单',ds:'生产分析库',badge:'Doris',time:'09:51',group:'今天',pinned:false,archived:false},
+  {id:'s3',title:'用户留存漏斗分析',ds:'业务主库',badge:'MySQL',time:'昨天',group:'昨天',pinned:false,archived:false},
+  {id:'s4',title:'高价值客户复购间隔',ds:'日志数仓',badge:'CH',time:'昨天',group:'昨天',pinned:false,archived:false},
+  {id:'s5',title:'复购用户地域分布',ds:'生产分析库',badge:'Doris',time:'10-08',group:'更早',pinned:false,archived:false},
+  {id:'s6',title:'订单履约时长分布',ds:'日志数仓',badge:'CH',time:'10-06',group:'更早',pinned:false,archived:false},
+  {id:'s7',title:'库存周转周报口径',ds:'业务主库',badge:'MySQL',time:'09-28',group:'更早',pinned:false,archived:false},
+  {id:'s8',title:'退款率异常排查',ds:'生产分析库',badge:'Doris',time:'09-20',group:'更早',pinned:false,archived:false},
+  {id:'s9',title:'Q3 渠道预算复盘',ds:'生产分析库',badge:'Doris',time:'09-15',group:'归档',pinned:false,archived:true},
+  {id:'s10',title:'老系统迁移核对',ds:'核心账务库',badge:'离线',time:'09-02',group:'归档',pinned:false,archived:true},
+];
+let activeSession='s1';
+let archiveOpen=false;
+let demoHTML=null; // 当前演示会话内容缓存
+
+function renderSessions(){
+  const q=(document.querySelector('.drawer-search input').value||'').toLowerCase();
+  const vis=SESSIONS.filter(s=>!q||s.title.toLowerCase().includes(q));
+  const pinned=vis.filter(s=>s.pinned&&!s.archived);
+  const archived=vis.filter(s=>s.archived);
+  const groups=['今天','昨天','更早'].map(g=>({g,items:vis.filter(s=>!s.pinned&&!s.archived&&s.group===g)})).filter(x=>x.items.length);
+  let html='';
+  if(pinned.length){
+    html+=`<div class="sess-group"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 17v5M9 3h6l-1 7 3 4H7l3-4z"/></svg>置顶<span class="g-cnt">${pinned.length}</span></div>`;
+    html+=pinned.map(sessItemHTML).join('');
+  }
+  groups.forEach(({g,items})=>{
+    html+=`<div class="sess-group">${g}<span class="g-cnt">${items.length}</span></div>`+items.map(sessItemHTML).join('');
+  });
+  if(archived.length){
+    html+=`<div class="sess-group foldable ${archiveOpen?'':'collapsed'}" onclick="archiveOpen=!archiveOpen;renderSessions()">
+      <svg class="g-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+      归档<span class="g-cnt">${archived.length}</span></div>`;
+    if(archiveOpen)html+=archived.map(sessItemHTML).join('');
+  }
+  document.getElementById('sessBody').innerHTML=html||'<div style="padding:20px 10px;font-size:12px;color:var(--t3);text-align:center">无匹配会话</div>';
+  const active=SESSIONS.filter(s=>!s.archived).length;
+  document.getElementById('sessCount').textContent=`${active} 活跃`;
+  document.getElementById('sessTip').classList.remove('show');
+}
+/* 悬停浮出会话元信息（延迟防抖动，不占列表空间） */
+let tipTimer=null;
+document.getElementById('sessBody').addEventListener('mouseover',e=>{
+  const item=e.target.closest('.sess-item');
+  if(!item||item.classList.contains('confirming'))return;
+  const s=SESSIONS.find(x=>x.id===item.dataset.id);
+  if(!s)return;
+  clearTimeout(tipTimer);
+  tipTimer=setTimeout(()=>{
+    const r=item.getBoundingClientRect();
+    const tip=document.getElementById('sessTip');
+    tip.innerHTML=`<span class="mini-badge">${s.badge}</span>${s.ds} · ${s.time}`;
+    tip.style.left=(r.right+10)+'px';
+    tip.style.top=(r.top+r.height/2-15)+'px';
+    tip.classList.add('show');
+  },420);
+});
+document.getElementById('sessBody').addEventListener('mouseout',e=>{
+  if(e.target.closest('.sess-item')){
+    clearTimeout(tipTimer);
+    document.getElementById('sessTip').classList.remove('show');
+  }
+});
+function sessItemHTML(s){
+  const cls='sess-item'+(s.id===activeSession?' active':'');
+  return`<div class="${cls}" data-id="${s.id}" onclick="openSession('${s.id}')">
+    <div class="sess-title">${s.pinned?'<svg class="pin-ic" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 17v5M9 3h6l-1 7 3 4H7l3-4z"/></svg>':''}${s.title}</div>
+    ${s.id===activeSession?`<div class="sess-sub"><span class="mini-badge">${s.badge}</span>${s.ds} · ${s.time}</div>`:''}
+    <div class="sess-acts" onclick="event.stopPropagation()">
+      <button class="sess-act" title="${s.pinned?'取消置顶':'置顶'}" onclick="sessPin('${s.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 17v5M9 3h6l-1 7 3 4H7l3-4z"/></svg></button>
+      <button class="sess-act" title="重命名" onclick="sessRename('${s.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg></button>
+      <button class="sess-act" title="${s.archived?'恢复':'归档'}" onclick="sessArchive('${s.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg></button>
+      <button class="sess-act danger" title="删除" onclick="sessDeleteAsk('${s.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+    </div>
+  </div>`;
+}
+function sessPin(id){const s=SESSIONS.find(x=>x.id===id);s.pinned=!s.pinned;if(s.pinned)s.archived=false;renderSessions();toast(s.pinned?'已置顶':'已取消置顶');}
+function sessArchive(id){const s=SESSIONS.find(x=>x.id===id);s.archived=!s.archived;if(s.archived)s.pinned=false;renderSessions();toast(s.archived?'已归档（列表底部可找回）':'已恢复到会话列表');}
+function sessRename(id){
+  const item=document.querySelector(`.sess-item[data-id="${id}"]`);
+  const s=SESSIONS.find(x=>x.id===id);
+  const titleEl=item.querySelector('.sess-title');
+  const old=s.title;
+  titleEl.innerHTML=`<input class="sess-rename" value="${old}">`;
+  const inp=titleEl.querySelector('input');inp.focus();inp.select();
+  inp.onclick=e=>e.stopPropagation();
+  const done=save=>{if(save&&inp.value.trim()){s.title=inp.value.trim();toast('已重命名');}renderSessions();};
+  inp.onblur=()=>done(true);
+  inp.onkeydown=e=>{if(e.key==='Enter')done(true);if(e.key==='Escape')done(false);e.stopPropagation();};
+}
+function sessDeleteAsk(id){
+  const item=document.querySelector(`.sess-item[data-id="${id}"]`);
+  item.classList.add('confirming');
+  item.innerHTML=`<div class="sess-confirm">删除此会话？<button class="yes" onclick="event.stopPropagation();sessDelete('${id}')">删除</button><button class="no" onclick="event.stopPropagation();renderSessions()">取消</button></div>`;
+}
+function sessDelete(id){
+  SESSIONS=SESSIONS.filter(x=>x.id!==id);
+  if(activeSession===id){activeSession=SESSIONS.find(s=>!s.archived)?.id||null;}
+  renderSessions();toast('会话已删除');
+}
+function openSession(id){
+  activeSession=id;renderSessions();
+  if(id==='s1'){restoreDemo();}else{toast('原型演示：切换到「'+SESSIONS.find(s=>s.id===id).title+'」');}
+}
+function newSession(){
+  if(!demoHTML)demoHTML=document.getElementById('streamInner').innerHTML;
+  activeSession=null;
+  document.getElementById('streamInner').innerHTML=`
+    <div class="empty-state">
+      <div class="empty-logo">AI</div>
+      <div class="empty-title">新的查询会话</div>
+      <div class="empty-sub">当前数据源：生产分析库（Doris · 87 表），仅本地模型</div>
+      <div class="empty-examples">
+        <button class="empty-ex" onclick="askFollowup('统计近 30 天每日新增用户')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M8 7h9v9"/></svg>统计近 30 天每日新增用户</button>
+        <button class="empty-ex" onclick="askFollowup('哪个渠道的客单价最高？按周看趋势')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M8 7h9v9"/></svg>哪个渠道的客单价最高？按周看趋势</button>
+        <button class="empty-ex" onclick="askFollowup('退款率最高的 10 个商品')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M8 7h9v9"/></svg>退款率最高的 10 个商品</button>
+      </div>
+    </div>`;
+  renderSessions();
+  document.getElementById('composerInput').focus();
+}
+function restoreDemo(){
+  if(demoHTML){document.getElementById('streamInner').innerHTML=demoHTML;bindTableSort();}
+}
+
+/* ================= 数据源切换 ================= */
+function toggleDsMenu(e){
+  e.stopPropagation();
+  document.getElementById('dsDropdown').classList.toggle('open');
+  document.getElementById('dsSwitch').classList.toggle('open');
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.ds-dropdown')&&!e.target.closest('.ds-switch')&&!e.target.closest('.composer-ds')){
+    document.getElementById('dsDropdown').classList.remove('open');
+    document.getElementById('dsSwitch').classList.remove('open');
+  }
+});
+function pickDs(el,name,badgeCls,badgeText){
+  document.querySelectorAll('.ds-opt').forEach(o=>o.classList.remove('cur'));
+  el.classList.add('cur');
+  document.getElementById('dsName').textContent=name;
+  const b=document.getElementById('dsBadge');b.className='dialect-badge '+badgeCls;b.textContent=badgeText;
+  const cb=document.getElementById('composerBadge');cb.className='dialect-badge '+badgeCls;cb.textContent=badgeText;
+  document.getElementById('composerDsName').textContent=name;
+  document.getElementById('dsDropdown').classList.remove('open');
+  if(badgeText==='离线')toast('已切换到离线库「'+name+'」：查询只生成 SQL，不执行');
+  else toast('已切换到「'+name+'」');
+}
+
+/* ================= 发送 & 流式模拟 ================= */
+let running=false, runTimers=[];
+function sendMessage(){
+  const inp=document.getElementById('composerInput');
+  const q=inp.value.trim();
+  if(!q||running)return;
+  inp.value='';
+  appendUserMsg(q);
+  runPipeline();
+}
+function askFollowup(text){
+  if(running)return;
+  if(activeSession===null){/* 空状态下直接发 */}
+  else if(demoHTML&&activeSession==='s1'){/* 保持在演示会话 */}
+  document.getElementById('composerInput').value='';
+  appendUserMsg(text);
+  runPipeline();
+}
+function appendUserMsg(q){
+  const badge=document.getElementById('composerBadge').className.replace('dialect-badge ','');
+  const badgeText=document.getElementById('composerBadge').textContent;
+  const ds=document.getElementById('composerDsName').textContent;
+  document.getElementById('streamInner').insertAdjacentHTML('beforeend',`
+    <div class="user-msg">
+      <div class="u-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/></svg></div>
+      <div class="user-bubble"><div class="u-ds"><span class="dialect-badge ${badge}">${badgeText}</span>${ds}</div>${q.replace(/</g,'&lt;')}</div>
+    </div>`);
+  scrollBottom();
+}
+function scrollBottom(){const st=document.getElementById('stream');st.scrollTop=st.scrollHeight;}
+function runPipeline(){
+  running=true;
+  document.getElementById('sendBtn').disabled=true;
+  const stages=['检索 schema…','生成中…','校验中…','执行中…'];
+  const times=['0.4s','','',''];
+  document.getElementById('streamInner').insertAdjacentHTML('beforeend',`
+    <div class="answer" id="liveAnswer">
+      <div class="stage-card" id="stageCard">
+        ${stages.map((s,i)=>`<div class="stage-row" id="stg${i}"><span class="stage-ic"></span><span>${s}</span><span class="st-time"></span></div>`).join('')}
+        <button class="stage-stop" onclick="stopPipeline()">停止（Esc）</button>
+      </div>
+    </div>`);
+  scrollBottom();
+  const durations=[600,1500,700,900];
+  let t=0;
+  durations.forEach((d,i)=>{
+    runTimers.push(setTimeout(()=>{
+      if(i>0){const prev=document.getElementById('stg'+(i-1));prev.classList.remove('active');prev.classList.add('done');prev.querySelector('.stage-ic').innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';prev.querySelector('.st-time').textContent=(durations[i-1]/1000).toFixed(1)+'s';}
+      const cur=document.getElementById('stg'+i);cur.classList.add('active');cur.querySelector('.stage-ic').innerHTML='<span class="spin"></span>';
+      scrollBottom();
+    },t));
+    t+=d;
+  });
+  runTimers.push(setTimeout(()=>{finishPipeline();},t+200));
+}
+function stopPipeline(){
+  runTimers.forEach(clearTimeout);runTimers=[];
+  const card=document.getElementById('stageCard');
+  if(card)card.innerHTML='<div class="stage-row" style="color:var(--red)"><span class="stage-ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></span><span>已手动停止 · 未产生任何执行</span></div>';
+  running=false;document.getElementById('sendBtn').disabled=false;
+  toast('已停止');
+}
+function finishPipeline(){
+  runTimers=[];
+  const el=document.getElementById('liveAnswer');
+  if(!el){running=false;return;}
+  el.removeAttribute('id');
+  el.innerHTML=`
+    <div class="block">
+      <div class="block-head" onclick="toggleBlock(this)">
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+        查询逻辑
+        <span class="head-note">users 表按注册日期分组计数，近 30 天窗口</span>
+      </div>
+      <div class="block-body"><ol>
+        <li>目标表 <code>users</code>，按 <code>created_at</code> 的日期部分分组</li>
+        <li>时间范围：服务侧已注入「今天是 2026-10-14」，近 30 天归一为 <code>2026-09-15 ~ 2026-10-14</code></li>
+        <li>结果按日期升序，便于看趋势</li>
+      </ol></div>
+    </div>
+    <div class="assume-wrap">
+      <span class="assume-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 18h6m-5 3h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>假设 2 条</span>
+      <span class="chip">「近 30 天」→ 09-15 ~ 10-14<span class="fix" onclick="fixAssume('近 30 天的时间范围')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>修正</span></span>
+      <span class="chip">「新增用户」= users.created_at<span class="fix" onclick="fixAssume('新增用户的口径')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>修正</span></span>
+    </div>
+    <div class="sql-block">
+      <div class="sql-toolbar"><span class="lang">SQL · doris</span>
+        <div class="sql-actions">
+          <button class="sql-act" onclick="copySql(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button>
+          <button class="sql-act" onclick="editSql(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>编辑重跑</button>
+          <button class="sql-act" onclick="saveSample(this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>存为样例</button>
+          <button class="sql-act primary" onclick="toast('原型演示：重新执行')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3z"/></svg>执行</button>
+        </div>
+      </div>
+      <div class="sql-pre"><div class="sql-line"><span class="sql-ln">1</span><span class="sql-code"><span class="k">SELECT</span></span></div>
+<div class="sql-line"><span class="sql-ln">2</span><span class="sql-code">  <span class="f">DATE</span>(created_at) <span class="k">AS</span> dt,</span></div>
+<div class="sql-line"><span class="sql-ln">3</span><span class="sql-code">  <span class="f">COUNT</span>(<span class="op">*</span>) <span class="k">AS</span> new_users</span></div>
+<div class="sql-line"><span class="sql-ln">4</span><span class="sql-code"><span class="k">FROM</span> users</span></div>
+<div class="sql-line"><span class="sql-ln">5</span><span class="sql-code"><span class="k">WHERE</span> created_at <span class="op">&gt;=</span> <span class="s">'2026-09-15'</span></span></div>
+<div class="sql-line"><span class="sql-ln">6</span><span class="sql-code"><span class="k">GROUP BY</span> <span class="n">1</span></span></div>
+<div class="sql-line"><span class="sql-ln">7</span><span class="sql-code"><span class="k">ORDER BY</span> dt;</span></div></div>
+    </div>
+    <div class="result">
+      <div class="result-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg>
+        查询结果
+        <div class="rh-acts">
+          <button class="rh-act" onclick="toast('原型演示：复制为 Markdown')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>复制</button>
+          <button class="rh-act" onclick="toast('原型演示：导出 CSV')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg>导出 CSV</button>
+        </div>
+      </div>
+      <div class="rtable-wrap"><table class="rtable">
+        <thead><tr><th>dt<span class="ty">date</span></th><th class="num">new_users<span class="ty">bigint</span></th></tr></thead>
+        <tbody>
+          <tr><td>2026-10-10</td><td class="num">312</td></tr>
+          <tr><td>2026-10-11</td><td class="num">298</td></tr>
+          <tr><td>2026-10-12</td><td class="num">341</td></tr>
+          <tr><td>2026-10-13</td><td class="num">389</td></tr>
+          <tr><td>2026-10-14</td><td class="num">156（进行中）</td></tr>
+        </tbody>
+      </table></div>
+      <div class="result-foot"><span>30 行（仅显示末 5 行预览）</span><span class="sep"></span><span>执行 0.6s</span><span class="sep"></span><span>扫描 ~84 万行</span><span class="sep"></span><span>数据截至 2026-10-14</span><span class="sep"></span><span>一次成功 · 未进修正回路</span></div>
+    </div>
+    <div class="meta-note" style="color:var(--amber)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+      成本提示：users 按 created_at 月分区，本次 WHERE 已命中分区裁剪；EXPLAIN 估计扫描 84 万行（低于 500 万告警阈值）
+    </div>
+    <div class="meta-note" style="color:var(--green)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
+      结果校验通过：行数非零 · 与口径一致（新增用户 = users.created_at）
+    </div>
+    <div class="meta-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+      检索模式：命中 3 表，tokens 1,082
+      <span class="timing">总耗时 3.4s</span>
+    </div>
+    <div class="followups">
+      <button class="followup" onclick="askFollowup('按注册城市拆一下新增用户')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M8 7h9v9"/></svg>按城市拆分</button>
+      <button class="followup" onclick="askFollowup('加上 7 日留存率')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M8 7h9v9"/></svg>加 7 日留存率</button>
+    </div>`;
+  running=false;
+  document.getElementById('sendBtn').disabled=false;
+  scrollBottom();
+}
+
+/* ================= 假设修正 / 存样例 ================= */
+function fixAssume(what){
+  const inp=document.getElementById('composerInput');
+  inp.value=`更正假设：${what}不对，应该是：`;
+  inp.focus();
+  inp.setSelectionRange(inp.value.length,inp.value.length);
+  toast('在输入框中补充正确口径后重新发送');
+}
+function saveSample(btn){
+  btn.classList.add('saved');
+  btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>已存样例';
+  toast('已存入样例库，将作为 few-shot 参考');
+}
+
+/* ================= SQL 操作 ================= */
+function copySql(btn){
+  const pre=btn.closest('.sql-block').querySelector('.sql-pre');
+  const text=[...pre.querySelectorAll('.sql-code')].map(l=>l.textContent).join('\n');
+  navigator.clipboard.writeText(text).then(()=>toast('已复制 SQL'));
+}
+function editSql(btn){
+  const block=btn.closest('.sql-block');
+  const codes=block.querySelectorAll('.sql-code');
+  const editing=btn.dataset.editing==='1';
+  codes.forEach(c=>c.contentEditable=editing?'false':'true');
+  btn.dataset.editing=editing?'':'1';
+  btn.innerHTML=editing
+    ?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>编辑重跑'
+    :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3z"/></svg>改好了，重新执行';
+  if(!editing){codes[0].focus();toast('SQL 已可编辑');}
+  else toast('原型演示：以修改后的 SQL 重进管线');
+}
+
+/* ================= 确认门 ================= */
+function confirmWrite(){
+  document.getElementById('confirmBar').classList.add('hidden');
+  const exec=document.getElementById('execBar');
+  exec.classList.remove('hidden');
+  setTimeout(()=>{exec.classList.add('hidden');document.getElementById('doneBar').classList.remove('hidden');},1400);
+}
+function cancelWrite(){
+  document.getElementById('confirmBar').innerHTML='<span style="color:var(--t3)">已取消，语句未执行</span>';
+}
+
+/* ================= 澄清门 ================= */
+function resolveClarify(choice){
+  if(choice==='custom'){
+    const inp=document.getElementById('composerInput');
+    inp.value='我说的「收入」口径是：';
+    inp.focus();
+    return;
+  }
+  const block=document.getElementById('clarifyBlock');
+  document.getElementById('clarifyOpts').remove();
+  block.insertAdjacentHTML('beforeend',`
+    <div class="clarify-resolved">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
+      已选「${choice}」，继续生成中…
+      <span class="pref">已沉淀为口径偏好 · 下次同类问题免问</span>
+    </div>`);
+  toast('口径已确认并沉淀为偏好');
+  setTimeout(()=>runPipeline(),600);
+}
+
+/* ================= 复核包 ================= */
+function copyReviewPack(){
+  const pack=`【复核包】
+问题：上个月各渠道的订单量和销售额，环比增长率是多少？
+口径假设：上个月=2026-09-01~09-30；环比基准=2026-08；销售额=SUM(amount) 含税；orders.channel_id→channels.id（推测）
+SQL：WITH monthly AS (SELECT ...) SELECT ... FROM monthly
+执行：2026-10-14 11:07 · 用时 1.2s · 8 行 · 扫描 ~84.2 万行
+数据时间：截至 2026-09-30
+风险标记：无`;
+  navigator.clipboard.writeText(pack).then(()=>toast('复核信息已复制，可直接粘贴留档'));
+}
+
+/* ================= 结果排序 ================= */
+const DEMO_ROWS=[
+  ['SEM 投放','2026-08',3812,'486,200.00',null],
+  ['SEM 投放','2026-09',4207,'551,940.50',13.5],
+  ['自然流量','2026-08',6530,'702,118.30',null],
+  ['自然流量','2026-09',6981,'768,002.15',9.4],
+  ['短视频','2026-08',2045,'261,775.00',null],
+  ['短视频','2026-09',1873,'228,506.75',-12.7],
+  ['老客召回','2026-08',1120,'188,320.00',null],
+  ['老客召回','2026-09',1356,'235,144.00',24.9],
+];
+function renderDemoRows(rows){
+  document.getElementById('demoTbody').innerHTML=rows.map(r=>`
+    <tr><td>${r[0]}</td><td>${r[1]}</td><td class="num">${r[2].toLocaleString()}</td><td class="num">${r[3]}</td>
+    <td class="num ${r[4]===null?'':(r[4]>=0?'up':'down')}">${r[4]===null?'-':(r[4]>=0?'+':'')+r[4]+'%'}</td></tr>`).join('');
+}
+const sortState={};
+const SORT_ASC='<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>';
+const SORT_DESC='<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+function sortTable(th,col,numeric){
+  const asc=!sortState[col];
+  sortState[col]=asc;
+  document.querySelectorAll('#demoTable .sort-ic').forEach(s=>s.innerHTML='');
+  th.querySelector('.sort-ic').innerHTML=asc?SORT_ASC:SORT_DESC;
+  const rows=[...DEMO_ROWS];
+  rows.sort((a,b)=>{
+    let va=a[col],vb=b[col];
+    if(numeric){va=va===null?-Infinity:parseFloat(String(va).replace(/,/g,''));vb=vb===null?-Infinity:parseFloat(String(vb).replace(/,/g,''));}
+    const cmp=va<vb?-1:va>vb?1:0;
+    return asc?cmp:-cmp;
+  });
+  renderDemoRows(rows);
+}
+function bindTableSort(){renderDemoRows(DEMO_ROWS);}
+
+/* ================= Schema 树 ================= */
+const TREE=[
+  {name:'orders',comment:'订单主表',cols:[['id','bigint','订单ID','pk'],['user_id','bigint','下单用户'],['channel_id','int','渠道(推测关联)'],['amount','decimal(10,2)','含税金额'],['status','varchar','paid/shipped/…'],['is_test','tinyint','测试单标记'],['is_deleted','tinyint','软删除'],['created_at','datetime','下单时间','part']]},
+  {name:'channels',comment:'渠道维度表',cols:[['id','int','渠道ID'],['channel_name','varchar','渠道名']]},
+  {name:'users',comment:'用户表',cols:[['id','bigint','用户ID'],['city','varchar','城市'],['created_at','datetime','注册时间']]},
+  {name:'order_items',comment:'订单明细',cols:[['id','bigint','明细ID'],['order_id','bigint','所属订单'],['product_id','bigint','商品'],['price','decimal(10,2)','单价'],['qty','int','数量']]},
+  {name:'refunds',comment:'退款表',cols:[['id','bigint','退款ID'],['order_id','bigint','原订单'],['amount','decimal(10,2)','退款金额'],['created_at','datetime','申请时间']]},
+  {name:'products',comment:'商品表',cols:[['id','bigint','商品ID'],['name','varchar','商品名'],['category_id','int','类目'],['price','decimal(10,2)','定价']]},
+];
+function renderTree(){
+  document.getElementById('tree').innerHTML=TREE.map((t,i)=>`
+    <div class="tree-table">
+      <div class="tree-row" onclick="toggleTree(this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="t-chev"><path d="M9 18l6-6-6-6"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg>
+        <span class="t-name">${t.name}</span>
+        <span class="t-add" title="插入表名到输入框" onclick="event.stopPropagation();insertTable('${t.name}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+        <span class="t-comment">${t.comment}</span>
+      </div>
+      <div class="tree-cols ${i===0?'open':''}">
+        ${t.cols.map(c=>`<div class="tree-col"><span class="cn">${c[0]}</span>${c[3]==='pk'?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#F5B85C" stroke-width="1.8" stroke-linecap="round" title="主键"><path d="M21 2l-2 2m-7.6 7.6a5.5 5.5 0 1 1-7.8 7.8 5.5 5.5 0 0 1 7.8-7.8zm0 0L19 4m-3.5 3.5L18 10"/></svg>':''}${c[3]==='part'?'<span class="mini-badge" style="color:var(--amber);border-color:var(--amber-border)" title="分区键（月分区）">分区</span>':''}<span class="ct">${c[1]}</span><span class="cc">${c[2]}</span></div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function toggleTree(row){
+  const cols=row.nextElementSibling;
+  cols.classList.toggle('open');
+  row.querySelector('.t-chev').style.transform=cols.classList.contains('open')?'rotate(90deg)':'';
+}
+function insertTable(name){
+  const inp=document.getElementById('composerInput');
+  inp.value+=(inp.value&&!inp.value.endsWith(' ')?' ':'')+name+' ';
+  inp.focus();
+  toast('已插入表名 '+name);
+}
+function filterTree(q){
+  q=q.trim().toLowerCase();
+  document.querySelectorAll('.tree-table').forEach(t=>{
+    t.style.display=!q||t.textContent.toLowerCase().includes(q)?'':'none';
+  });
+}
+function switchTab(tab,paneId){
+  document.querySelectorAll('.side-tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+  document.getElementById('schemaPane').classList.toggle('hidden',paneId!=='schemaPane');
+  document.getElementById('detailPane').classList.toggle('hidden',paneId!=='detailPane');
+}
+
+/* ================= 快捷键 ================= */
+document.getElementById('composerInput').addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();sendMessage();}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&running)stopPipeline();
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){
+    e.preventDefault();
+    const d=document.getElementById('drawer');
+    if(d.classList.contains('closed'))d.classList.remove('closed');
+    document.getElementById('sessSearch').focus();
+  }
+});
+
+/* ================= 初始化 ================= */
+demoHTML=document.getElementById('streamInner').innerHTML;
+renderSessions();renderTree();renderDemoRows(DEMO_ROWS);
+
+/* ================= 键盘可达性：可点容器获焦 + Enter/Space 激活 ================= */
+(function(){
+  const SEL='.block-head,.round-head,.tree-row,.sess-item,.chip .fix,.cn-line,.ds-opt';
+  const apply=()=>document.querySelectorAll(SEL).forEach(el=>{if(!el.hasAttribute('tabindex'))el.setAttribute('tabindex','0');});
+  apply();
+  new MutationObserver(apply).observe(document.body,{childList:true,subtree:true});
+  document.addEventListener('keydown',e=>{
+    if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches(SEL)){e.preventDefault();e.target.click();}
+  });
+})();
+</script>
+</body>
+</html>

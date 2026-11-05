@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AItosql · 设置</title>
+<style>
+:root{
+  --bg-0:#0E1116; --bg-1:#151920; --bg-2:#1C222C; --bg-3:#232B38;
+  --border:#262D3A; --border-soft:#20262F;
+  --t1:#E7EAF0; --t2:#9BA4B4; --t3:#646E7F;
+  --accent:#6E9EFF; --accent-soft:rgba(110,158,255,.12); --accent-border:rgba(110,158,255,.28);
+  --red:#F27979; --red-soft:rgba(242,121,121,.10);
+  --amber:#F5B85C; --amber-soft:rgba(245,184,92,.10); --amber-border:rgba(245,184,92,.35);
+  --green:#4ADE9C; --green-soft:rgba(74,222,156,.10); --green-border:rgba(74,222,156,.35);
+  --mono:"JetBrains Mono","SF Mono",Consolas,"Courier New",monospace;
+  --sans:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+::selection{background:rgba(110,158,255,.32);color:#fff}
+html,body{height:100%}
+body{background:var(--bg-0);color:var(--t1);font-family:var(--sans);font-size:14px;line-height:1.6;overflow:hidden}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#2A3240;border-radius:5px;border:2px solid var(--bg-0)}
+::-webkit-scrollbar-track{background:transparent}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+
+.shell{display:flex;height:100vh}
+.rail{width:64px;flex-shrink:0;background:var(--bg-1);border-right:1px solid var(--border-soft);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:6px;z-index:30}
+.rail-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#3D6FD8,#6E9EFF);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:13px;color:#fff;margin-bottom:10px}
+.rail-btn{width:44px;height:44px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--t3);position:relative;transition:all .15s;text-decoration:none}
+.rail-btn:hover{background:var(--bg-2);color:var(--t2)}
+.rail-btn.active{color:var(--accent);background:var(--accent-soft)}
+.rail-btn.active::before{content:"";position:absolute;left:-10px;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.rail-btn svg{width:20px;height:20px}
+.rail-btn .lbl{font-size:10px;line-height:1}
+.rail-spacer{flex:1}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{height:52px;flex-shrink:0;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;padding:0 16px;gap:12px}
+.ds-switch{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg-1);font-size:13px}
+.dialect-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;letter-spacing:.03em}
+.badge-doris{background:rgba(180,140,255,.14);color:#C4A1FF;border:1px solid rgba(180,140,255,.28)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.route-pill{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);padding:5px 11px;border-radius:999px;border:1px solid var(--border);background:var(--bg-1)}
+.route-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(74,222,156,.6)}
+.route-pill svg{width:13px;height:13px;color:var(--green)}
+
+.page{flex:1;overflow:hidden;display:flex}
+.subnav{width:200px;flex-shrink:0;border-right:1px solid var(--border-soft);padding:22px 12px;overflow-y:auto;background:var(--bg-0)}
+.subnav-title{font-size:11px;font-weight:700;color:var(--t3);letter-spacing:.08em;padding:0 12px 10px}
+.sn-link{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--t2);padding:8px 12px;border-radius:8px;cursor:pointer;transition:all .12s;text-decoration:none;margin-bottom:2px}
+.sn-link svg{width:15px;height:15px;color:var(--t3);flex-shrink:0}
+.sn-link:hover{color:var(--t1);background:var(--bg-1)}
+.sn-link.active{color:var(--accent);background:var(--accent-soft)}
+.sn-link.active svg{color:var(--accent)}
+
+.content{flex:1;overflow-y:auto;padding:24px 36px 36px}
+.content-inner{max-width:1240px;margin:0 auto}
+.page-title{font-size:20px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--t3);margin-bottom:26px}
+.sgroup{margin-bottom:32px;scroll-margin-top:16px}
+.sgroup-head{margin-bottom:12px;display:flex;align-items:baseline;gap:12px}
+.sgroup-title{font-size:15px;font-weight:700}
+.sgroup-sub{font-size:12.5px;color:var(--t3)}
+.sgroup-grid{display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start}
+@media(max-width:1100px){.sgroup-grid{grid-template-columns:1fr}}
+
+.panel{background:var(--bg-1);border:1px solid var(--border-soft);border-radius:12px;overflow:hidden}
+.set-row{display:flex;align-items:center;gap:16px;padding:13px 18px;border-bottom:1px solid var(--border-soft)}
+.set-row:last-child{border-bottom:none}
+.set-info{flex:1;min-width:0}
+.set-name{font-size:13.5px;font-weight:600}
+.set-desc{font-size:12px;color:var(--t3);margin-top:2px}
+.set-desc code{font-family:var(--mono);font-size:11px;background:var(--bg-3);padding:1px 5px;border-radius:4px;color:#A9C1E8}
+.set-ctl{flex-shrink:0;display:flex;align-items:center;gap:8px}
+.form-select,.form-input{background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:6px 11px;color:var(--t1);font-size:13px;font-family:inherit;outline:none;transition:border-color .12s}
+.form-select:focus,.form-input:focus{border-color:var(--accent-border)}
+.form-input.mono{font-family:var(--mono);font-size:12px}
+.form-input.w-num{width:90px;text-align:right;font-family:var(--mono)}
+.form-input.w-mid{width:210px;font-family:var(--mono);font-size:12px}
+.set-grid2{display:grid;grid-template-columns:1fr 1fr}
+.set-grid2 .set-row:nth-child(odd){border-right:1px solid var(--border-soft)}
+.set-grid2 .set-row:nth-last-child(2):nth-child(odd){border-bottom:none}
+
+.switch{width:34px;height:19px;border-radius:999px;background:var(--bg-3);border:1px solid var(--border);position:relative;transition:all .15s;flex-shrink:0;cursor:pointer}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:var(--t3);transition:all .15s}
+.switch.on{background:rgba(74,222,156,.25);border-color:var(--green-border)}
+.switch.on::after{left:17px;background:var(--green)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);border:3px solid var(--bg-1);box-shadow:0 0 0 1px var(--accent-border);margin-top:-5px;cursor:pointer}
+
+.aside{display:flex;flex-direction:column;gap:14px;position:sticky;top:0}
+.aside-card{background:var(--bg-2);border:1px solid var(--border-soft);border-radius:12px;padding:14px 16px}
+.aside-card h5{font-size:12px;font-weight:700;color:var(--t2);letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.aside-card h5 svg{width:13px;height:13px;color:var(--t3)}
+.aside-row{display:flex;justify-content:space-between;font-size:12px;padding:4px 0}
+.aside-row .k{color:var(--t3)}
+.aside-row .v{color:var(--t1)}
+.aside-row .v.mono{font-family:var(--mono);font-size:11.5px}
+.aside-list{font-size:12px;color:var(--t2);display:flex;flex-direction:column;gap:6px}
+.aside-list li{display:flex;gap:7px;align-items:flex-start;list-style:none}
+.aside-list li::before{content:"";width:4px;height:4px;border-radius:50%;background:var(--t3);margin-top:8px;flex-shrink:0}
+.egress-card{border-color:var(--amber-border);background:linear-gradient(0deg,var(--amber-soft),var(--amber-soft)),var(--bg-2)}
+.egress-card h5{color:var(--amber)} .egress-card h5 svg{color:var(--amber)} .egress-card li{color:#E8C48A}
+.egress-never{margin-top:8px;padding-top:8px;border-top:1px dashed var(--amber-border);font-size:11.5px;color:#AFC9F5}
+.defense-layer{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--t2);padding:6px 0}
+.defense-layer .dl-no{width:18px;height:18px;border-radius:50%;background:var(--bg-3);color:var(--t3);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono)}
+.defense-layer .dl-tag{margin-left:auto;font-size:10px;padding:1px 7px;border-radius:4px}
+.dl-tag.warn{background:var(--amber-soft);color:var(--amber)}
+.dl-tag.confirm{background:var(--accent-soft);color:var(--accent)}
+.dl-tag.env{background:var(--green-soft);color:var(--green)}
+.budget-track{height:22px;border-radius:6px;overflow:hidden;display:flex;font-size:10px;font-family:var(--mono);line-height:22px;text-align:center}
+.budget-track .seg-schema{background:var(--accent);color:#0B1220;font-weight:700}
+.budget-track .seg-rest{background:var(--bg-3);color:var(--t3)}
+.budget-note{font-size:11px;color:var(--t3);margin-top:6px}
+.bk-row{display:flex;justify-content:space-between;font-size:11.5px;padding:5px 0;border-top:1px solid var(--border-soft);font-family:var(--mono);color:var(--t2)}
+.bk-row:first-of-type{border-top:none}
+.bk-row .sz{color:var(--t3)}
+
+.btn{font-size:13px;font-weight:600;padding:7px 16px;border-radius:8px;transition:all .12s;display:inline-flex;align-items:center;gap:6px}
+.btn svg{width:13px;height:13px}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:#84ACFF}
+.btn-ghost{color:var(--t2);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--bg-2);color:var(--t1)}
+.btn-sm{font-size:12px;padding:4px 10px}
+
+/* ===== 提供商列表 ===== */
+.provider-list{display:flex;flex-direction:column;gap:10px}
+.provider-card{display:flex;align-items:center;gap:14px;background:var(--bg-1);border:1px solid var(--border-soft);border-radius:12px;padding:14px 18px;transition:border-color .12s}
+.provider-card:hover{border-color:var(--border)}
+.provider-icon{width:38px;height:38px;border-radius:10px;background:var(--bg-3);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:12px;color:var(--t2);flex-shrink:0}
+.provider-icon.local{color:var(--green);background:var(--green-soft)}
+.provider-icon.cloud{color:var(--accent);background:var(--accent-soft)}
+.provider-info{flex:1;min-width:0}
+.provider-name{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+.pv-tag{font-size:10px;padding:1px 7px;border-radius:4px;background:var(--bg-3);color:var(--t3);font-weight:600}
+.pv-tag.local{background:var(--green-soft);color:var(--green)}
+.provider-sub{font-size:11.5px;color:var(--t3);margin-top:2px;font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.provider-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);flex-shrink:0}
+.provider-status .pd{width:7px;height:7px;border-radius:50%}
+.provider-status .pd.on{background:var(--green);box-shadow:0 0 6px rgba(74,222,156,.5)}
+.provider-status .pd.off{background:var(--t3)}
+.provider-acts{display:flex;gap:4px;flex-shrink:0}
+.row-act{font-size:12px;color:var(--t2);padding:4px 10px;border-radius:6px;transition:all .12s}
+.row-act:hover{background:var(--bg-3);color:var(--t1)}
+.row-act.danger{color:var(--red)} .row-act.danger:hover{background:var(--red-soft)}
+.add-provider{border:1.5px dashed var(--border);border-radius:12px;padding:15px;text-align:center;font-size:13px;color:var(--t3);cursor:pointer;transition:all .15s;background:none;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.add-provider:hover{border-color:var(--accent-border);color:var(--accent);background:var(--accent-soft)}
+
+/* ===== 抽屉 ===== */
+.overlay{position:fixed;inset:0;background:rgba(5,7,10,.6);opacity:0;pointer-events:none;transition:opacity .2s;z-index:48}
+.overlay.show{opacity:1;pointer-events:auto}
+.drawer-panel{position:fixed;top:0;right:-520px;bottom:0;width:500px;background:var(--bg-1);border-left:1px solid var(--border);z-index:49;transition:right .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-16px 0 50px rgba(0,0,0,.5)}
+.drawer-panel.show{right:0}
+.dp-head{padding:16px 20px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;gap:10px}
+.dp-title{font-size:15px;font-weight:700}
+.dp-close{margin-left:auto;color:var(--t3);font-size:18px;padding:2px 6px;border-radius:6px}
+.dp-close:hover{color:var(--t1);background:var(--bg-2)}
+.dp-body{flex:1;overflow-y:auto;padding:18px 20px}
+.dp-foot{padding:14px 20px;border-top:1px solid var(--border-soft);display:flex;justify-content:flex-end;gap:10px;align-items:center}
+.dp-test{margin-right:auto}
+.form-row{margin-bottom:15px}
+.form-label{display:block;font-size:12.5px;font-weight:600;color:var(--t2);margin-bottom:6px}
+.form-label .req{color:var(--red)}
+.form-label-row{display:flex;align-items:center;margin-bottom:6px}
+.form-label-row .form-label{margin-bottom:0}
+.form-label-row .fl-acts{margin-left:auto;display:flex;gap:4px}
+.fl-link{font-size:11.5px;color:var(--accent);cursor:pointer;padding:2px 7px;border-radius:5px}
+.fl-link:hover{background:var(--accent-soft)}
+.fl-link.muted{color:var(--t3)}
+.fl-link.muted:hover{color:var(--t2);background:var(--bg-2)}
+.w-full{width:100%}
+.form-hint{font-size:11.5px;color:var(--t3);margin-top:5px}
+.collapse-head{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--t2);padding:10px 0 4px;cursor:pointer;user-select:none}
+.collapse-head svg{width:13px;height:13px;color:var(--t3);transition:transform .18s}
+.collapse-head.open svg{transform:rotate(90deg)}
+.collapse-body{display:none;padding-top:8px}
+.collapse-body.open{display:block}
+.key-row{display:flex;gap:8px;align-items:center}
+.key-eye{width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--t3);border:1px solid var(--border);flex-shrink:0}
+.key-eye:hover{color:var(--t1);background:var(--bg-3)}
+.key-eye svg{width:14px;height:14px}
+/* 模型目录行 */
+.model-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.model-row .form-input{font-size:12px;font-family:var(--mono)}
+.model-row .mid{flex:1.2}
+.model-row .mname{flex:1}
+.model-del{width:28px;height:28px;border-radius:6px;color:var(--t3);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.model-del:hover{color:var(--red);background:var(--red-soft)}
+.model-add{font-size:12px;color:var(--accent);display:inline-flex;align-items:center;gap:5px;padding:4px 0;cursor:pointer}
+.model-add:hover{text-decoration:underline}
+.model-err{font-size:11.5px;color:var(--red);margin-top:6px;display:flex;align-items:center;gap:5px}
+.model-err svg{width:12px;height:12px}
+.model-note{font-size:11px;color:var(--t3);background:var(--bg-2);border:1px dashed var(--border);border-radius:8px;padding:8px 12px;margin-bottom:10px}
+.fetch-loading{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2)}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(110,158,255,.5)}50%{opacity:.5;box-shadow:0 0 0 4px rgba(110,158,255,0)}}
+
+/* 提示词预览 */
+.pp-sec{margin-bottom:16px}
+.pp-sec-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px}
+.pp-no{width:17px;height:17px;border-radius:50%;background:var(--bg-3);color:var(--t3);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--mono);flex-shrink:0}
+.pp-tok{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--t3);font-weight:400}
+.pp-pre{background:#0B0E13;border:1px solid var(--border-soft);border-radius:9px;padding:11px 13px;font-family:var(--mono);font-size:12px;line-height:1.7;color:#C9D4E3;white-space:pre-wrap;word-break:break-all;margin:0}
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--bg-3);border:1px solid var(--border);color:var(--t1);font-size:13px;padding:9px 18px;border-radius:10px;opacity:0;pointer-events:none;transition:all .25s;box-shadow:0 8px 30px rgba(0,0,0,.4);z-index:99}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <nav class="rail">
+    <div class="rail-logo">AI</div>
+    <a class="rail-btn" href="index.html" title="查询">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="lbl">查询</span>
+    </a>
+    <a class="rail-btn" href="datasources.html" title="数据源">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+      <span class="lbl">数据源</span>
+    </a>
+    <a class="rail-btn" href="samples.html" title="样例库">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+      <span class="lbl">样例库</span>
+    </a>
+    <a class="rail-btn active" href="settings.html" title="设置">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4m0 14v4M4.2 4.2l2.8 2.8m10 10 2.8 2.8M1 12h4m14 0h4M4.2 19.8l2.8-2.8m10-10 2.8-2.8"/></svg>
+      <span class="lbl">设置</span>
+    </a>
+    <div class="rail-spacer"></div>
+  </nav>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="ds-switch" onclick="toast('原型演示：切换数据源')">
+        <span class="dialect-badge badge-doris">Doris</span>生产分析库
+        <span style="color:var(--t3);font-size:10px;margin-left:2px">▾</span>
+      </button>
+      <div class="topbar-right">
+        <span class="route-pill" id="routePill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          仅本地 · qwen3-32b
+          <span class="dot"></span>
+        </span>
+      </div>
+    </header>
+
+    <div class="page">
+      <nav class="subnav">
+        <div class="subnav-title">设置</div>
+        <a class="sn-link active" href="#g-general">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          通用
+        </a>
+        <a class="sn-link" href="#g-providers">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>
+          模型提供商
+        </a>
+        <a class="sn-link" href="#g-route">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 3v12m0 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm12-9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 0v12"/></svg>
+          路由策略
+        </a>
+        <a class="sn-link" href="#g-prompt">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+          提示词
+        </a>
+        <a class="sn-link" href="#g-memory">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 3a7 7 0 0 0-7 7c0 2.4 1.2 3.9 2.2 5.2.8 1 1.8 2 1.8 3.8h6c0-1.8 1-2.8 1.8-3.8C17.8 13.9 19 12.4 19 10a7 7 0 0 0-7-7z"/><path d="M9 21h6"/></svg>
+          记忆与偏好
+        </a>
+        <a class="sn-link" href="#g-query">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10z"/></svg>
+          查询与安全
+        </a>
+        <a class="sn-link" href="#g-schema">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+          Schema 注入
+        </a>
+        <a class="sn-link" href="#g-sample">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+          样例与缓存
+        </a>
+        <a class="sn-link" href="#g-backup">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg>
+          备份
+        </a>
+        <a class="sn-link" href="#g-about">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+          关于
+        </a>
+      </nav>
+
+      <div class="content" id="contentScroll">
+        <div class="content-inner">
+          <div class="page-title">设置</div>
+          <div class="page-sub">配置即时生效于新查询，自动落盘，无需重启。</div>
+
+          <!-- ===== 通用 ===== -->
+          <section class="sgroup" id="g-general">
+            <div class="sgroup-head">
+              <div class="sgroup-title">通用</div>
+              <div class="sgroup-sub">界面与显示偏好。</div>
+            </div>
+            <div class="sgroup-grid">
+              <div class="panel">
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">主题</div><div class="set-desc">深色针对长时间盯屏优化</div></div>
+                  <div class="set-ctl"><select class="form-select"><option selected>跟随系统</option><option>深色</option><option>浅色</option></select></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">结果预览截断</div><div class="set-desc">单条结果预览落盘上限（KB），超出可导出 CSV</div></div>
+                  <div class="set-ctl"><input class="form-input w-num" value="50"></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">启动页</div><div class="set-desc">打开应用默认进入的页面</div></div>
+                  <div class="set-ctl"><select class="form-select"><option selected>查询</option><option>上次退出时的会话</option><option>数据源</option></select></div>
+                </div>
+              </div>
+              <div class="aside">
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>说明</h5>
+                  <ul class="aside-list">
+                    <li>主题改动即时生效，不影响会话状态</li>
+                    <li>浅色主题完整支持，对比度达 WCAG AA</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ===== 模型提供商 ===== -->
+          <section class="sgroup" id="g-providers">
+            <div class="sgroup-head">
+              <div class="sgroup-title">模型提供商</div>
+              <div class="sgroup-sub">从内置目录选择提供商，填入 API 密钥即可使用；本地推理走自定义端点。</div>
+            </div>
+            <div class="sgroup-grid">
+              <div class="provider-list">
+                <div class="provider-card">
+                  <div class="provider-icon local"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M4 10H2M4 14H2M22 10h-2M22 14h-2M10 4V2M14 4V2M10 22v-2M14 22v-2"/></svg></div>
+                  <div class="provider-info">
+                    <div class="provider-name">本地 Ollama <span class="pv-tag local">本地</span><span class="pv-tag">自定义</span></div>
+                    <div class="provider-sub">http://127.0.0.1:11434/v1 · qwen3-32b、qwen2.5-14b、bge-m3</div>
+                  </div>
+                  <span class="provider-status"><span class="pd on"></span>已连接</span>
+                  <div class="provider-acts">
+                    <button class="row-act" onclick="toast('连接正常 · 延迟 12ms（演示）')">测试</button>
+                    <button class="row-act" onclick="openProvider('ollama')">编辑</button>
+                    <button class="row-act danger" onclick="toast('原型演示：删除确认')">删除</button>
+                  </div>
+                </div>
+                <div class="provider-card">
+                  <div class="provider-icon cloud"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></div>
+                  <div class="provider-info">
+                    <div class="provider-name">DeepSeek <span class="pv-tag">内置</span></div>
+                    <div class="provider-sub">api.deepseek.com · deepseek-chat、deepseek-reasoner</div>
+                  </div>
+                  <span class="provider-status"><span class="pd on"></span>已配置</span>
+                  <div class="provider-acts">
+                    <button class="row-act" onclick="toast('连接正常 · 余量充足（演示）')">测试</button>
+                    <button class="row-act" onclick="openProvider('deepseek')">编辑</button>
+                  </div>
+                </div>
+                <div class="provider-card">
+                  <div class="provider-icon cloud"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></div>
+                  <div class="provider-info">
+                    <div class="provider-name">站撸网关 <span class="pv-tag">自定义</span></div>
+                    <div class="provider-sub">http://127.0.0.1:15721/v1 · gpt-5.5、gpt-6-sol、gpt-6.1-sol 等 5 个模型</div>
+                  </div>
+                  <span class="provider-status"><span class="pd on"></span>已连接</span>
+                  <div class="provider-acts">
+                    <button class="row-act" onclick="toast('连接正常（演示）')">测试</button>
+                    <button class="row-act" onclick="openProvider('zhanlu')">编辑</button>
+                    <button class="row-act danger" onclick="toast('原型演示：删除确认')">删除</button>
+                  </div>
+                </div>
+                <div class="provider-card" style="opacity:.65">
+                  <div class="provider-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></div>
+                  <div class="provider-info">
+                    <div class="provider-name">OpenAI <span class="pv-tag">内置</span></div>
+                    <div class="provider-sub">未配置 API 密钥</div>
+                  </div>
+                  <span class="provider-status"><span class="pd off"></span>未启用</span>
+                  <div class="provider-acts">
+                    <button class="row-act" onclick="openProvider('openai')">编辑</button>
+                  </div>
+                </div>
+                <button class="add-provider" onclick="openProvider()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>添加模型提供商</button>
+              </div>
+              <div class="aside">
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10z"/></svg>密钥安全</h5>
+                  <ul class="aside-list">
+                    <li>API 密钥 Fernet 加密存本地 SQLite</li>
+                    <li>密钥不回显明文、不进日志、不进备份导出</li>
+                    <li>留空可改用环境变量注入</li>
+                  </ul>
+                </div>
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>能力提示</h5>
+                  <ul class="aside-list">
+                    <li>生成路由建议 32B 级以上模型（复杂 SQL 成功率差异大）</li>
+                    <li>修正回路与 AI 补全可用较小模型</li>
+                    <li>标记「本地」的提供商不产生数据出境</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ===== 路由策略 ===== -->
+          <section class="sgroup" id="g-route">
+            <div class="sgroup-head">
+              <div class="sgroup-title">路由策略</div>
+              <div class="sgroup-sub">从已配置的提供商中为各环节选模型；纯本地组合 = local_only 零出境。</div>
+            </div>
+            <div class="sgroup-grid">
+              <div class="panel">
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">生成路由</div><div class="set-desc">首次生成 SQL 的模型（建议旗舰级）</div></div>
+                  <div class="set-ctl"><select class="form-select" id="genRoute" style="width:230px" onchange="onRouteChange()">
+                    <option value="local" data-local="1" selected>本地 Ollama · qwen3-32b</option>
+                    <option value="local2" data-local="1">本地 Ollama · qwen2.5-14b</option>
+                    <option value="cloud1">DeepSeek · deepseek-chat</option>
+                    <option value="cloud2">站撸网关 · gpt-6-sol</option>
+                  </select></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">修正路由</div><div class="set-desc">执行报错回喂修正（回喂含脱敏后的错误信息）</div></div>
+                  <div class="set-ctl"><select class="form-select" id="fixRoute" style="width:230px" onchange="onRouteChange()">
+                    <option value="local" data-local="1" selected>本地 Ollama · qwen3-32b</option>
+                    <option value="local2" data-local="1">本地 Ollama · qwen2.5-14b</option>
+                    <option value="cloud1">DeepSeek · deepseek-chat</option>
+                    <option value="cloud2">站撸网关 · gpt-6-sol</option>
+                  </select></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">AI 补全路由</div><div class="set-desc">数据源模块的注释/标准/关系建议生成</div></div>
+                  <div class="set-ctl"><select class="form-select" id="aiRoute" style="width:230px" onchange="onRouteChange()">
+                    <option value="local2" data-local="1" selected>本地 Ollama · qwen2.5-14b</option>
+                    <option value="local" data-local="1">本地 Ollama · qwen3-32b</option>
+                    <option value="cloud1">DeepSeek · deepseek-chat</option>
+                  </select></div>
+                </div>
+              </div>
+              <div class="aside">
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 3v12m0 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm12-9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 0v12"/></svg>当前生效</h5>
+                  <div class="aside-row"><span class="k">生成</span><span class="v" id="asGen">本地 qwen3-32b</span></div>
+                  <div class="aside-row"><span class="k">修正</span><span class="v" id="asFix">本地 qwen3-32b</span></div>
+                  <div class="aside-row"><span class="k">AI 补全</span><span class="v" id="asAi">本地 qwen2.5-14b</span></div>
+                  <div class="aside-row"><span class="k">数据出境</span><span class="v" id="asEgress" style="color:var(--green)">无</span></div>
+                </div>
+                <div class="aside-card egress-card hidden" id="egressCard">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>出境内容清单</h5>
+                  <ul class="aside-list">
+                    <li>自然语言问题原文</li>
+                    <li>表名 / 字段名 / 注释摘录</li>
+                    <li>生成的 SQL 语句</li>
+                    <li>引擎报错（已脱敏：字面量→占位符）</li>
+                  </ul>
+                  <div class="egress-never">绝不外发：凭证、查询结果数据、连接地址。</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ===== 提示词 ===== -->
+          <section class="sgroup" id="g-prompt">
+            <div class="sgroup-head">
+              <div class="sgroup-title">提示词</div>
+              <div class="sgroup-sub">生成链路的全部文案都在这里维护：系统设定、方言能力卡、行为开关，改完即时生效。</div>
+            </div>
+            <div class="sgroup-grid">
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div class="panel" style="padding:16px 18px">
+                  <div class="form-label-row" style="margin-bottom:8px">
+                    <label class="form-label" style="margin:0">系统提示词（生成角色设定）</label>
+                    <div class="fl-acts" style="margin-left:auto;display:flex;gap:4px">
+                      <span class="fl-link muted" onclick="resetSysPrompt()">恢复默认</span>
+                      <span class="fl-link" onclick="toast('原型演示：已校验模板变量')">校验变量</span>
+                    </div>
+                  </div>
+                  <textarea class="form-input mono w-full" id="sysPrompt" rows="9" style="line-height:1.7;resize:vertical">你是 AItosql 的 SQL 生成器，基于给定 schema 与口径为 {{dialect}} 方言生成可执行 SQL。
+
+规则：
+1. 歧义不拒绝：给出假设并标注 impact（high=口径多版本/多解关联 → 触发澄清门；low=假设先行）
+2. 输出严格 JSON 契约：reasoning / assumptions / need_tables / sql
+3. 优先使用已注入的字段标准、维度枚举与指标口径
+4. 分区表查询必须在 WHERE 中包含分区键
+5. 当前日期：{{date}}（相对时间一律归一为绝对区间）</textarea>
+                  <div class="form-hint">支持变量：<code style="font-family:var(--mono);font-size:11px;background:var(--bg-3);padding:1px 5px;border-radius:4px;color:#A9C1E8">{{dialect}}</code> <code style="font-family:var(--mono);font-size:11px;background:var(--bg-3);padding:1px 5px;border-radius:4px;color:#A9C1E8">{{date}}</code> <code style="font-family:var(--mono);font-size:11px;background:var(--bg-3);padding:1px 5px;border-radius:4px;color:#A9C1E8">{{schema_budget}}</code> · <span id="sysLen">约 312 tokens</span></div>
+                </div>
+
+                <div class="panel" style="padding:16px 18px">
+                  <div class="form-label-row" style="margin-bottom:8px">
+                    <label class="form-label" style="margin:0">方言能力卡（随数据源方言注入）</label>
+                    <div class="fl-acts" style="margin-left:auto;display:flex;gap:4px" id="dialectTabs">
+                      <span class="fl-link" data-d="doris" style="background:var(--accent-soft)" onclick="switchDialect(this)">Doris</span>
+                      <span class="fl-link muted" data-d="mysql" onclick="switchDialect(this)">MySQL</span>
+                      <span class="fl-link muted" data-d="clickhouse" onclick="switchDialect(this)">ClickHouse</span>
+                    </div>
+                  </div>
+                  <textarea class="form-input mono w-full" id="dialectCard" rows="6" style="line-height:1.7;resize:vertical">引擎：Doris 2.1.5（MySQL 协议）
+支持：CTE / 窗口函数（LAG/LEAD/SUM OVER）/ REGEXP / DATE_TRUNC / approx_count_distinct
+注意：UPDATE 无事务不可回滚；GROUP BY 可用列序号；分桶键 JOIN 可触发 Colocate</textarea>
+                  <div class="form-hint">版本由注册时探测自动写入；能力差异（如 CH 无 DELETE、MySQL 8 才有窗口函数）在此维护，模型按卡生成。</div>
+                </div>
+
+                <div class="panel">
+                  <div class="set-row">
+                    <div class="set-info"><div class="set-name">高风险歧义澄清门</div><div class="set-desc">impact=high 时暂停生成，内联请你裁决口径；确认结果沉淀为偏好</div></div>
+                    <div class="set-ctl"><span class="switch on" onclick="toggleSwitch(this)"></span></div>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-info"><div class="set-name">结果校验（规则层）</div><div class="set-desc">行数非零 / 关键列全 NULL / 明细汇总对账 / 分区裁剪，零 LLM 成本</div></div>
+                    <div class="set-ctl"><span class="switch on" onclick="toggleSwitch(this)"></span></div>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-info"><div class="set-name">结果校验（LLM 层）</div><div class="set-desc">把问题+假设+结果预览回喂小模型判断「能回答这个问题吗」，每次查询多一次调用</div></div>
+                    <div class="set-ctl"><span class="switch" onclick="toggleSwitch(this)"></span></div>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-info"><div class="set-name">追问建议</div><div class="set-desc">结果后生成 2-3 个下钻/变体问题 chips</div></div>
+                    <div class="set-ctl"><span class="switch on" onclick="toggleSwitch(this)"></span></div>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-info"><div class="set-name">分区提示注入</div><div class="set-desc">schema 中标注分区键「查询大表请带时间范围」</div></div>
+                    <div class="set-ctl"><span class="switch on" onclick="toggleSwitch(this)"></span></div>
+                  </div>
+                </div>
+
+                <button class="btn btn-ghost" style="align-self:flex-start" onclick="openPromptPreview()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                  预览完整组装提示词
+                </button>
+              </div>
+
+              <div class="aside">
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>组装顺序</h5>
+                  <div class="aside-row"><span class="k">1 系统设定</span><span class="v mono">~312 t</span></div>
+                  <div class="aside-row"><span class="k">2 方言能力卡</span><span class="v mono">~96 t</span></div>
+                  <div class="aside-row"><span class="k">3 记忆（总账）</span><span class="v mono">~120 t</span></div>
+                  <div class="aside-row"><span class="k">4 会话摘要</span><span class="v mono">压缩才有</span></div>
+                  <div class="aside-row"><span class="k">5 Schema 注入</span><span class="v mono">≤60% 预算</span></div>
+                  <div class="aside-row"><span class="k">6 样例 few-shot</span><span class="v mono">≤3 条</span></div>
+                  <div class="aside-row"><span class="k">7 指标口径</span><span class="v mono">命中才注入</span></div>
+                  <div class="aside-row"><span class="k">8 用户问题</span><span class="v mono">-</span></div>
+                </div>
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>修改须知</h5>
+                  <ul class="aside-list">
+                    <li>系统提示词改动影响所有新查询，历史会话不回溯</li>
+                    <li>能力卡错误会导致生成不可执行的 SQL，改完建议跑一条验证样例</li>
+                    <li>澄清门关闭后 high 歧义退化为假设先行</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ===== 记忆与偏好 ===== -->
+          <section class="sgroup" id="g-memory">
+            <div class="sgroup-head">
+              <div class="sgroup-title">记忆与偏好</div>
+              <div class="sgroup-sub">两层记忆：流水账无损追加，总账合并去重后随每次生成注入；长会话自动压缩，压缩前先抢救事实。</div>
+            </div>
+            <div class="sgroup-grid">
+              <div style="display:flex;flex-direction:column;gap:16px">
+                <div class="panel set-grid2">
+                  <div class="set-row">
+                    <div class="set-info"><div class="set-name">记忆模块</div><div class="set-desc">关闭后不再提取/注入记忆，已有条目保留</div></div>
+                    <div class="set-ctl"><span class="switch on" onclick="toggleSwitch(this)"></span></div>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-info"><div class="set-name">总账注入</div><div class="set-desc">记忆条目随提示词信封注入（第 3 段）</div></div>
+                    <div class="set-ctl"><span class="switch on" onclick="toggleSwitch(this)"></span></div>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-info"><div class="set-name">总账容量上限（tokens）</div><div class="set-desc">超出时合并会裁掉最旧未命中条目</div></div>
+                    <div class="set-ctl"><input class="form-input w-num" value="4000"></div>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-info"><div class="set-name">合并间隔（分钟）</div><div class="set-desc">水位线增量合并，失败静默下轮重试</div></div>
+                    <div class="set-ctl"><input class="form-input w-num" value="30"></div>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-info"><div class="set-name">会话压缩触发（消息数）</div><div class="set-desc">超过后早期轮次压缩为滚动摘要</div></div>
+                    <div class="set-ctl"><input class="form-input w-num" value="40"></div>
+                  </div>
+                  <div class="set-row">
+                    <div class="set-info"><div class="set-name">压缩保留最近轮数</div><div class="set-desc">完整保留，更早的进摘要</div></div>
+                    <div class="set-ctl"><input class="form-input w-num" value="6"></div>
+                  </div>
+                </div>
+
+                <div class="panel">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                    <div style="font-size:13px;font-weight:600;color:var(--t1)">记忆总账 <span style="font-size:11px;color:var(--t3);font-weight:400">每次生成注入 · 停用即不再注入</span></div>
+                    <button class="btn btn-ghost" style="padding:5px 12px;font-size:12px" onclick="consolidateNow()">立即合并</button>
+                  </div>
+                  <div style="margin-bottom:14px">
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-bottom:5px"><span>容量占用</span><span class="mono" id="memCapText">1,240 / 4,000 tokens</span></div>
+                    <div style="height:5px;background:var(--bg-3);border-radius:3px;overflow:hidden"><div id="memCapBar" style="width:31%;height:100%;background:var(--green);border-radius:3px;transition:width .3s"></div></div>
+                  </div>
+                  <div id="memList">
+                    <div class="set-row" style="align-items:flex-start">
+                      <div class="set-info">
+                        <div class="set-name" style="display:flex;align-items:center;gap:8px">口径偏好 <span style="font-size:10px;padding:1px 7px;border-radius:4px;background:var(--accent-soft);color:var(--accent)">全局</span></div>
+                        <div class="set-desc">「收入」默认含税口径：SUM(amount)，含已退款单；用户 10-13 澄清门裁决</div>
+                      </div>
+                      <div class="set-ctl" style="gap:8px;display:flex;align-items:center">
+                        <span class="switch on" onclick="toggleSwitch(this);toast('已更新，下次生成生效')"></span>
+                        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px" onclick="toast('原型演示：行内编辑记忆条目')">编辑</button>
+                      </div>
+                    </div>
+                    <div class="set-row" style="align-items:flex-start">
+                      <div class="set-info">
+                        <div class="set-name" style="display:flex;align-items:center;gap:8px">表怪癖 <span style="font-size:10px;padding:1px 7px;border-radius:4px;background:var(--green-soft);color:var(--green)">生产分析库</span></div>
+                        <div class="set-desc">orders.city 约 30% 为 NULL，按城市聚合前建议先过滤；来源：3 次查询观察</div>
+                      </div>
+                      <div class="set-ctl" style="gap:8px;display:flex;align-items:center">
+                        <span class="switch on" onclick="toggleSwitch(this);toast('已更新，下次生成生效')"></span>
+                        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px" onclick="toast('原型演示：行内编辑记忆条目')">编辑</button>
+                      </div>
+                    </div>
+                    <div class="set-row" style="align-items:flex-start">
+                      <div class="set-info">
+                        <div class="set-name" style="display:flex;align-items:center;gap:8px">查询习惯 <span style="font-size:10px;padding:1px 7px;border-radius:4px;background:var(--accent-soft);color:var(--accent)">全局</span></div>
+                        <div class="set-desc">「上个月」均指自然月整月（含月末当天），两次修正收敛</div>
+                      </div>
+                      <div class="set-ctl" style="gap:8px;display:flex;align-items:center">
+                        <span class="switch" onclick="toggleSwitch(this);toast('已停用：该条目不再注入')"></span>
+                        <button class="btn btn-ghost" style="padding:4px 10px;font-size:11.5px" onclick="toast('原型演示：行内编辑记忆条目')">编辑</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="panel">
+                  <div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px">流水账（最近 5 条）</div>
+                  <div style="font-size:11.5px;color:var(--t3);margin-bottom:10px">追加只写，从不修改；合并时按水位线增量处理</div>
+                  <pre class="mono" id="memLog" style="background:var(--bg-0);border:1px solid var(--border-soft);border-radius:8px;padding:12px 14px;font-size:11.5px;line-height:1.8;color:var(--t2);margin:0;white-space:pre-wrap">10-14 14:02  caliber     收入口径=含税（澄清门裁决）「生产分析库」
+10-14 11:47  correction  「上个月」= 自然月整月（用户修正第 2 次）
+10-13 22:15  quirk       orders.city 空值率约 30%
+10-13 20:31  preference  偏好按渠道维度钻取（追问采纳 3 次）
+10-13 16:08  caliber     GMV 口径确认：剔除 is_test 与未支付单</pre>
+                </div>
+              </div>
+
+              <div class="aside">
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 3a7 7 0 0 0-7 7c0 2.4 1.2 3.9 2.2 5.2.8 1 1.8 2 1.8 3.8h6c0-1.8 1-2.8 1.8-3.8C17.8 13.9 19 12.4 19 10a7 7 0 0 0-7-7z"/><path d="M9 21h6"/></svg>两层架构</h5>
+                  <div class="aside-row"><span class="k">流水账</span><span class="v">无损追加，底稿</span></div>
+                  <div class="aside-row"><span class="k">总账</span><span class="v">合并去重，注入</span></div>
+                  <div class="aside-row"><span class="k">衔接点</span><span class="v">销毁前先抢救</span></div>
+                  <div class="aside-row"><span class="k">原文</span><span class="v">历史记录永存</span></div>
+                </div>
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>写入三入口</h5>
+                  <ul class="aside-list">
+                    <li>自动提取：每次查询后由小模型异步 flush</li>
+                    <li>裁决直写：澄清门/修正/存样例即时入账</li>
+                    <li>人工管理：本页增删改停用，即时生效</li>
+                    <li>提取与合并走 AI 补全路由，不占生成模型</li>
+                  </ul>
+                </div>
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg>会话压缩</h5>
+                  <ul class="aside-list">
+                    <li>超 40 条消息触发，保留最近 6 轮完整</li>
+                    <li>压缩前先把事实抢救进流水账</li>
+                    <li>摘要有损会滚动再压缩，事实层无损</li>
+                    <li>压缩点会在消息流里显示提示条</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ===== 查询与安全 ===== -->
+          <section class="sgroup" id="g-query">
+            <div class="sgroup-head">
+              <div class="sgroup-title">查询与安全</div>
+              <div class="sgroup-sub">只告警不阻断；写操作多一次确认。</div>
+            </div>
+            <div class="sgroup-grid">
+              <div class="panel set-grid2">
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">自动 LIMIT 默认值</div><div class="set-desc">纯 SELECT 无 LIMIT 时追加</div></div>
+                  <div class="set-ctl"><input class="form-input w-num" value="1000"></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">语句超时（秒）</div><div class="set-desc">超时错误回喂修正回路</div></div>
+                  <div class="set-ctl"><input class="form-input w-num" value="30"></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">写操作二次确认</div><div class="set-desc">非纯 SELECT 执行前人工确认</div></div>
+                  <div class="set-ctl"><span class="switch on" onclick="toggleSwitch(this)"></span></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">ClickHouse 强制只读</div><div class="set-desc">连接默认 <code>readonly=1</code></div></div>
+                  <div class="set-ctl"><span class="switch on" onclick="toggleSwitch(this)"></span></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">修正轮数上限</div><div class="set-desc">振荡检测命中会提前终止</div></div>
+                  <div class="set-ctl"><input class="form-input w-num" value="3"></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">连接池上限 / 数据源</div><div class="set-desc">单用户场景无需大池</div></div>
+                  <div class="set-ctl"><input class="form-input w-num" value="2"></div>
+                </div>
+              </div>
+              <div class="aside">
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10z"/></svg>三层防线（当前配置）</h5>
+                  <div class="defense-layer"><span class="dl-no">1</span>AST 13 条规则告警<span class="dl-tag warn">不阻断</span></div>
+                  <div class="defense-layer"><span class="dl-no">2</span>写操作二次确认<span class="dl-tag confirm">确认</span></div>
+                  <div class="defense-layer"><span class="dl-no">3</span>只读账号 / CH readonly<span class="dl-tag env">环境</span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ===== Schema 注入 ===== -->
+          <section class="sgroup" id="g-schema">
+            <div class="sgroup-head">
+              <div class="sgroup-title">Schema 注入</div>
+              <div class="sgroup-sub">决定每次查询给模型喂多少库表信息。</div>
+            </div>
+            <div class="sgroup-grid">
+              <div class="panel">
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">注入模式</div><div class="set-desc">auto = 按上下文预算逐查询自动决策</div></div>
+                  <div class="set-ctl"><select class="form-select"><option selected>auto（自动）</option><option>full（始终全量）</option><option>retrieval（始终检索）</option></select></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">上下文预算</div><div class="set-desc">schema 注入占模型上下文的比例上限</div></div>
+                  <div class="set-ctl" style="display:flex;align-items:center;gap:10px">
+                    <input type="range" min="30" max="80" value="60" step="5" style="-webkit-appearance:none;width:140px;height:4px;background:var(--bg-3);border-radius:2px" oninput="document.getElementById('budgetVal').textContent=this.value+'%';document.getElementById('segSchema').style.width=this.value+'%'">
+                    <span class="num" id="budgetVal" style="color:var(--accent);min-width:36px;text-align:right;font-size:12.5px">60%</span>
+                  </div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">向量检索</div><div class="set-desc">schema 超阈值时启用本地向量召回（sqlite-vec，零出境）</div></div>
+                  <div class="set-ctl"><select class="form-select"><option selected>自动（超阈值启用）</option><option>始终关闭</option><option>始终开启</option></select></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">维度枚举注入上限</div><div class="set-desc">单字段最多注入的枚举值个数，超出显示「等 N 个」</div></div>
+                  <div class="set-ctl"><input class="form-input w-num" value="8"></div>
+                </div>
+              </div>
+              <div class="aside">
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12"/></svg>预算示意（32k 上下文）</h5>
+                  <div class="budget-track">
+                    <div class="seg-schema" id="segSchema" style="width:60%">schema 19.6k</div>
+                    <div class="seg-rest" style="flex:1">系统+样例+输出 13.1k</div>
+                  </div>
+                  <div class="budget-note">超预算时走软切换：关键词检索 → 未命中表清单 → 向量召回</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ===== 样例与缓存 ===== -->
+          <section class="sgroup" id="g-sample">
+            <div class="sgroup-head">
+              <div class="sgroup-title">样例与缓存</div>
+              <div class="sgroup-sub">few-shot 参考与重复问题加速。</div>
+            </div>
+            <div class="sgroup-grid">
+              <div class="panel">
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">few-shot 样例条数</div><div class="set-desc">每次生成最多注入的相关样例数（仅启用且未过期）</div></div>
+                  <div class="set-ctl"><input class="form-input w-num" value="3"></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">重复问题缓存</div><div class="set-desc">问题归一化命中已验证样例时直返，标注「复用已验证结果」</div></div>
+                  <div class="set-ctl"><span class="switch on" onclick="toggleSwitch(this)"></span></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">schema 变更自动置过期</div><div class="set-desc">关联字段变更时样例自动 stale，不进 few-shot</div></div>
+                  <div class="set-ctl"><span class="switch on" onclick="toggleSwitch(this)"></span></div>
+                </div>
+              </div>
+              <div class="aside">
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>当前样例库</h5>
+                  <div class="aside-row"><span class="k">样例总数</span><span class="v mono">7</span></div>
+                  <div class="aside-row"><span class="k">启用</span><span class="v mono" style="color:var(--green)">4</span></div>
+                  <div class="aside-row"><span class="k">过期</span><span class="v mono" style="color:var(--amber)">2</span></div>
+                  <div class="aside-row"><span class="k">缓存命中率（7天）</span><span class="v mono">18%</span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ===== 备份 ===== -->
+          <section class="sgroup" id="g-backup">
+            <div class="sgroup-head">
+              <div class="sgroup-title">备份</div>
+              <div class="sgroup-sub">SQLite 滚动快照 + 样例库 JSON 导出，崩溃可完整恢复。</div>
+            </div>
+            <div class="sgroup-grid">
+              <div class="panel">
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">备份目录</div><div class="set-desc">每 4 小时滚动备份（VACUUM INTO）</div></div>
+                  <div class="set-ctl"><input class="form-input w-mid" value="data/backups/"></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">滚动份数</div><div class="set-desc">超出后最旧的备份自动删除</div></div>
+                  <div class="set-ctl"><input class="form-input w-num" value="10"></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">手动备份</div><div class="set-desc">升级前建议手动留一份</div></div>
+                  <div class="set-ctl"><button class="btn btn-ghost btn-sm" onclick="doBackup()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16"/></svg>
+                    立即备份
+                  </button></div>
+                </div>
+              </div>
+              <div class="aside">
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg>最近备份</h5>
+                  <div class="bk-row"><span id="bk1">app-20261014-0600.db</span><span class="sz">2.4 MB</span></div>
+                  <div class="bk-row"><span>app-20261014-0200.db</span><span class="sz">2.4 MB</span></div>
+                  <div class="bk-row"><span>app-20261013-2200.db</span><span class="sz">2.3 MB</span></div>
+                  <div class="bk-row"><span>app-20261013-1800.db</span><span class="sz">2.3 MB</span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ===== 关于 ===== -->
+          <section class="sgroup" id="g-about">
+            <div class="sgroup-head"><div class="sgroup-title">关于</div></div>
+            <div class="sgroup-grid">
+              <div class="panel">
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">版本</div><div class="set-desc">个人版 Text2SQL · MIT License</div></div>
+                  <div class="set-ctl"><span class="num">v0.1.0</span></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">数据目录</div><div class="set-desc">业务库 / checkpoint / 备份所在目录</div></div>
+                  <div class="set-ctl"><span class="num" style="font-size:12px">C:\datas\AItosql\data\</span></div>
+                </div>
+                <div class="set-row">
+                  <div class="set-info"><div class="set-name">访问令牌</div><div class="set-desc">本机 API Bearer token；泄露后可重新生成</div></div>
+                  <div class="set-ctl"><button class="btn btn-ghost btn-sm" onclick="toast('原型演示：已重新生成 token，旧 token 立即失效')">重新生成</button></div>
+                </div>
+              </div>
+              <div class="aside">
+                <div class="aside-card">
+                  <h5><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10z"/></svg>运行状态</h5>
+                  <div class="aside-row"><span class="k">监听</span><span class="v mono">127.0.0.1:8321</span></div>
+                  <div class="aside-row"><span class="k">模式</span><span class="v" id="asMode" style="color:var(--green)">local_only</span></div>
+                  <div class="aside-row"><span class="k">数据源</span><span class="v mono">3 在线 / 1 离线</span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 抽屉：提供商编辑 ================= -->
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+<div class="drawer-panel" id="pvDrawer">
+  <div class="dp-head">
+    <span class="dp-title" id="pvTitle">编辑提供商</span>
+    <button class="dp-close" onclick="closeDrawer()">×</button>
+  </div>
+  <div class="dp-body">
+    <div class="form-row">
+      <label class="form-label">提供商 <span class="req">*</span></label>
+      <select class="form-select w-full" id="pvType" onchange="onPvType()">
+        <option value="custom">自定义（OpenAI 兼容）</option>
+        <option value="ollama">Ollama（本地）</option>
+        <option value="vllm">vLLM（本地）</option>
+        <option value="deepseek">DeepSeek</option>
+        <option value="openai">OpenAI</option>
+        <option value="anthropic">Anthropic</option>
+        <option value="google">Google Gemini</option>
+        <option value="groq">Groq</option>
+        <option value="azure">Azure OpenAI</option>
+        <option value="qwen">通义 / 百炼</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">名称</label>
+      <input class="form-input" id="pvName" placeholder="自定义提供商时必填，如：站撸网关">
+    </div>
+    <div class="form-row">
+      <label class="form-label">API 密钥</label>
+      <div class="key-row">
+        <input class="form-input mono w-full" type="password" id="pvKey" placeholder="输入 API 密钥，或留空使用环境变量">
+        <button class="key-eye" onclick="togglePvKey()" title="显示/隐藏">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="form-hint">Fernet 加密存储；本地提供商（Ollama/vLLM）通常无需密钥。</div>
+    </div>
+
+    <div class="collapse-head open" id="advHead" onclick="toggleAdv()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+      自定义设置
+    </div>
+    <div class="collapse-body open" id="advBody">
+      <div class="form-row">
+        <label class="form-label">API 地址</label>
+        <input class="form-input mono w-full" id="pvBase" placeholder="提供商默认">
+      </div>
+      <div class="form-row">
+        <label class="form-label">API 协议</label>
+        <select class="form-select w-full" id="pvProto">
+          <option>OpenAI Chat</option>
+          <option>OpenAI Responses</option>
+          <option>Anthropic Messages</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-label-row">
+          <label class="form-label">模型目录</label>
+          <div class="fl-acts">
+            <span class="fl-link muted" onclick="restoreDefaultModels()">恢复默认模型</span>
+            <span class="fl-link" id="fetchLink" onclick="fetchModels()">获取可用模型</span>
+          </div>
+        </div>
+        <div class="model-note" id="modelNote">目录外模型 ID 仍可直接在路由策略中手动输入。</div>
+        <div id="modelRows"></div>
+        <span class="model-add" onclick="addModelRow('','')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          添加模型
+        </span>
+        <div class="model-err hidden" id="modelErr">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+          <span id="modelErrText">模型 ID 不能为空</span>
+        </div>
+      </div>
+    </div>
+    <div id="pvTestRes" class="hidden" style="margin-top:14px"></div>
+  </div>
+  <div class="dp-foot">
+    <button class="btn btn-ghost btn-sm dp-test" onclick="testProvider()">测试连接</button>
+    <button class="btn btn-ghost" onclick="closeDrawer()">取消</button>
+    <button class="btn btn-accent" onclick="saveProvider()">保存</button>
+  </div>
+</div>
+
+<!-- 抽屉：完整提示词组装预览 -->
+<div class="drawer-panel" id="ppDrawer" style="width:620px;right:-660px">
+  <div class="dp-head">
+    <span class="dp-title">提示词组装预览</span>
+    <span style="font-size:11.5px;color:var(--t3)">以最近一次真实查询为例 · 共 ~3,334 tokens</span>
+    <button class="dp-close" onclick="closePp()">×</button>
+  </div>
+  <div class="dp-body">
+    <div class="pp-sec">
+      <div class="pp-sec-head"><span class="pp-no">1</span>系统设定<span class="pp-tok">~312 tokens</span></div>
+      <pre class="pp-pre" id="ppSys"></pre>
+    </div>
+    <div class="pp-sec">
+      <div class="pp-sec-head"><span class="pp-no">2</span>方言能力卡 · Doris<span class="pp-tok">~96 tokens</span></div>
+      <pre class="pp-pre" id="ppDialect"></pre>
+    </div>
+    <div class="pp-sec">
+      <div class="pp-sec-head"><span class="pp-no">3</span>记忆（总账 · 本库 + 全局启用条目）<span class="pp-tok">~120 tokens</span></div>
+      <pre class="pp-pre"># 口径偏好（全局）
+「收入」默认含税口径：SUM(amount)，含已退款单
+# 表怪癖（生产分析库）
+orders.city 约 30% 为 NULL，按城市聚合前建议先过滤</pre>
+    </div>
+    <div class="pp-sec">
+      <div class="pp-sec-head"><span class="pp-no">4</span>会话摘要<span class="pp-tok">本会话未压缩 · 0 tokens</span></div>
+      <pre class="pp-pre" style="color:var(--t3)">（会话消息超过 40 条后，早期轮次压缩为滚动摘要注入于此）</pre>
+    </div>
+    <div class="pp-sec">
+      <div class="pp-sec-head"><span class="pp-no">5</span>Schema 注入（检索模式 · 命中 12 表，此处节选 2 表）<span class="pp-tok">~1,860 tokens</span></div>
+      <pre class="pp-pre"># 表 orders（订单主表）· 约 1248 万行
+id            bigint          订单ID 「主键 · 分桶键(16桶)」
+user_id       bigint          下单用户 「标准:用户标识」 → users.id
+channel_id    int             渠道 「维度:渠道」1=自然流量 2=SEM投放 3=短视频 4=老客召回
+amount        decimal(10,2)   含税金额 「标准:金额(含税) · 单位:元」
+status        varchar         订单状态 「维度:订单状态」paid=已支付 …
+created_at    datetime        下单时间 「分区键·按月，查询大表请带时间范围」
+
+# 表 channels（渠道维度表）
+id            int             渠道ID 「主键」
+channel_name  varchar         渠道名</pre>
+    </div>
+    <div class="pp-sec">
+      <div class="pp-sec-head"><span class="pp-no">6</span>样例 few-shot · top 2<span class="pp-tok">~480 tokens</span></div>
+      <pre class="pp-pre">Q: 各渠道上月销售额？          → SQL: SELECT c.channel_name, SUM(o.amount) ...
+Q: 每日订单量趋势（近30天）     → SQL: SELECT DATE(created_at), COUNT(*) ...</pre>
+    </div>
+    <div class="pp-sec">
+      <div class="pp-sec-head"><span class="pp-no">7</span>指标口径（命中 2 条）<span class="pp-tok">~88 tokens</span></div>
+      <pre class="pp-pre">GMV       = SUM(amount) WHERE status IN ('paid','shipped','done') AND is_test = 0
+环比增长率 = (本期 − LAG(本期)) / LAG(本期) 「窗口模板」</pre>
+    </div>
+    <div class="pp-sec">
+      <div class="pp-sec-head"><span class="pp-no">8</span>用户问题<span class="pp-tok">~28 tokens</span></div>
+      <pre class="pp-pre">上个月各渠道的订单量和销售额，环比增长率是多少？</pre>
+    </div>
+  </div>
+  <div class="dp-foot">
+    <button class="btn btn-ghost" onclick="closePp()">关闭</button>
+    <button class="btn btn-accent" onclick="toast('原型演示：完整提示词已复制')">复制全文</button>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+function toast(msg){
+  const t=document.getElementById('toastEl');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),1800);
+}
+function consolidateNow(){
+  toast('合并完成：新增 2 条入账，总账 8 → 9 条');
+  const log=document.getElementById('memLog');
+  const line=document.createElement('div');
+  line.textContent='10-14 15:10  consolidate 水位线 +5，合并去重 2 条';
+  line.style.color='var(--t3)';
+  log.prepend(line);
+  document.getElementById('memCapText').textContent='1,312 / 4,000 tokens';
+  document.getElementById('memCapBar').style.width='33%';
+}
+function toggleSwitch(el){el.classList.toggle('on');toast(el.classList.contains('on')?'已开启':'已关闭');}
+
+/* ================= 提供商抽屉 ================= */
+const PROVIDERS={
+  ollama:{title:'编辑提供商 · 本地 Ollama',type:'ollama',name:'本地 Ollama',key:'',base:'http://127.0.0.1:11434/v1',proto:'OpenAI Chat',
+    models:[['qwen3-32b','qwen3-32b'],['qwen2.5-14b','qwen2.5-14b'],['bge-m3','bge-m3（向量）']]},
+  deepseek:{title:'编辑提供商 · DeepSeek',type:'deepseek',name:'DeepSeek',key:'sk-••••••••••••••••',base:'',proto:'OpenAI Chat',
+    models:[['deepseek-chat','deepseek-chat'],['deepseek-reasoner','deepseek-reasoner']]},
+  zhanlu:{title:'编辑提供商 · 站撸网关',type:'custom',name:'站撸网关',key:'sk-••••••••',base:'http://127.0.0.1:15721/v1',proto:'OpenAI Responses',
+    models:[['gpt-5.5','gpt-5.5'],['gpt-5.6-terra','gpt-5.6-terra'],['gpt-6-astra','gpt-6-astra'],['gpt-6-sol','gpt-6-sol'],['gpt-6.1-sol','gpt-6.1-sol']]},
+  openai:{title:'编辑提供商 · OpenAI',type:'openai',name:'OpenAI',key:'',base:'',proto:'OpenAI Responses',
+    models:[['gpt-5','gpt-5'],['gpt-5-mini','gpt-5-mini']]},
+};
+function openProvider(key){
+  const p=key?PROVIDERS[key]:{title:'添加提供商',type:'custom',name:'',key:'',base:'',proto:'OpenAI Chat',models:[['','']]};
+  document.getElementById('pvTitle').textContent=p.title;
+  document.getElementById('pvType').value=p.type;
+  document.getElementById('pvName').value=p.name;
+  document.getElementById('pvKey').value=p.key;
+  document.getElementById('pvBase').value=p.base;
+  document.getElementById('pvProto').value=p.proto;
+  document.getElementById('modelRows').innerHTML='';
+  p.models.forEach(m=>addModelRow(m[0],m[1]));
+  document.getElementById('modelErr').classList.add('hidden');
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('pvDrawer').classList.add('show');
+}
+function closeDrawer(){
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('pvDrawer').classList.remove('show');
+}
+function onPvType(){
+  const t=document.getElementById('pvType').value;
+  const local=t==='ollama'||t==='vllm';
+  if(t==='ollama')document.getElementById('pvBase').value='http://127.0.0.1:11434/v1';
+  if(t==='vllm')document.getElementById('pvBase').value='http://127.0.0.1:8000/v1';
+  if(!local&&t!=='custom')document.getElementById('pvBase').value='';
+  document.getElementById('modelNote').textContent=local
+    ?'本地提供商：点击「获取可用模型」自动拉取已安装模型。'
+    :'目录外模型 ID 仍可直接在路由策略中手动输入。';
+}
+function togglePvKey(){
+  const inp=document.getElementById('pvKey');
+  inp.type=inp.type==='password'?'text':'password';
+}
+function toggleAdv(){
+  document.getElementById('advHead').classList.toggle('open');
+  document.getElementById('advBody').classList.toggle('open');
+}
+function addModelRow(id,name){
+  const div=document.createElement('div');
+  div.className='model-row';
+  div.innerHTML=`<input class="form-input mid" placeholder="模型 ID" value="${id}"><input class="form-input mname" placeholder="显示名称" value="${name}"><button class="model-del" onclick="this.parentElement.remove()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>`;
+  document.getElementById('modelRows').appendChild(div);
+}
+function fetchModels(){
+  const link=document.getElementById('fetchLink');
+  link.innerHTML='<span class="fetch-loading"><span class="pulse-dot"></span>拉取中…</span>';
+  setTimeout(()=>{
+    link.textContent='获取可用模型';
+    document.getElementById('modelRows').innerHTML='';
+    [['qwen3-32b','qwen3-32b'],['qwen2.5-14b','qwen2.5-14b'],['qwen2.5-7b','qwen2.5-7b'],['bge-m3','bge-m3（向量）']].forEach(m=>addModelRow(m[0],m[1]));
+    toast('已从端点拉取 4 个模型');
+  },1100);
+}
+function restoreDefaultModels(){
+  document.getElementById('modelRows').innerHTML='';
+  addModelRow('','');
+  toast('已恢复提供商默认模型目录');
+}
+function testProvider(){
+  const t=document.getElementById('pvType').value;
+  const local=t==='ollama'||t==='vllm';
+  const key=document.getElementById('pvKey').value.trim();
+  const res=document.getElementById('pvTestRes');
+  res.classList.remove('hidden');
+  res.innerHTML='<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--t2)"><span class="pulse-dot"></span>正在连接…</div>';
+  setTimeout(()=>{
+    if(!local&&!key){
+      res.innerHTML=`<div style="display:flex;gap:8px;font-size:12.5px;color:#EFA0A0;background:var(--red-soft);border:1px solid rgba(242,121,121,.35);border-radius:9px;padding:10px 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="flex-shrink:0;margin-top:2px"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+        <div>连接失败：<code style="font-family:var(--mono);font-size:11.5px">401 Unauthorized · invalid api key</code><br>
+        <span style="font-size:12px;color:#D08A8A">未配置密钥且环境变量未命中。密钥仅本地加密存储，未外发。</span></div>
+      </div>`;
+    }else{
+      res.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#9DE8C4;background:var(--green-soft);border:1px solid rgba(74,222,156,.3);border-radius:9px;padding:10px 13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>
+        连接正常 · 延迟 ${local?12:210}ms · 返回 ${local?4:2} 个可用模型
+      </div>`;
+    }
+  },900);
+}
+function saveProvider(){
+  const rows=[...document.querySelectorAll('#modelRows .model-row')];
+  const bad=rows.findIndex(r=>!r.querySelector('.mid').value.trim());
+  const err=document.getElementById('modelErr');
+  if(bad>=0){
+    document.getElementById('modelErrText').textContent=`模型 ${bad+1}: 模型 ID 不能为空`;
+    err.classList.remove('hidden');
+    return;
+  }
+  err.classList.add('hidden');
+  closeDrawer();
+  toast('提供商已保存');
+}
+
+/* ================= 提示词维护 ================= */
+const DIALECT_CARDS={
+  doris:`引擎：Doris 2.1.5（MySQL 协议）
+支持：CTE / 窗口函数（LAG/LEAD/SUM OVER）/ REGEXP / DATE_TRUNC / approx_count_distinct
+注意：UPDATE 无事务不可回滚；GROUP BY 可用列序号；分桶键 JOIN 可触发 Colocate`,
+  mysql:`引擎：MySQL 8.0.36
+支持：CTE / 窗口函数 / REGEXP_LIKE / DATE_FORMAT；不支持 DATE_TRUNC（用 DATE_FORMAT 替代）
+注意：UPDATE/DELETE 有事务；无 approx_count_distinct（用 COUNT(DISTINCT)）`,
+  clickhouse:`引擎：ClickHouse 24.8
+支持：窗口函数 / 向量化聚合 / toYYYYMM / uniq（近似去重）；正则 match()
+注意：默认 readonly=1；DELETE 为重量级 Mutation 禁用；JOIN 性能弱，优先宽表`,
+};
+let curDialect='doris';
+function switchDialect(el){
+  document.querySelectorAll('#dialectTabs .fl-link').forEach(l=>{l.classList.add('muted');l.style.background='';});
+  el.classList.remove('muted');el.style.background='var(--accent-soft)';
+  curDialect=el.dataset.d;
+  document.getElementById('dialectCard').value=DIALECT_CARDS[curDialect];
+}
+function resetSysPrompt(){
+  document.getElementById('sysPrompt').value=document.getElementById('sysPrompt').defaultValue;
+  toast('已恢复默认系统提示词');
+}
+function openPromptPreview(){
+  DIALECT_CARDS[curDialect]=document.getElementById('dialectCard').value;
+  document.getElementById('ppSys').textContent=document.getElementById('sysPrompt').value.replaceAll('{{dialect}}','doris').replaceAll('{{date}}','2026-10-14');
+  document.getElementById('ppDialect').textContent=document.getElementById('dialectCard').value;
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('ppDrawer').classList.add('show');
+  document.getElementById('ppDrawer').style.right='0';
+}
+function closePp(){
+  document.getElementById('ppDrawer').style.right='-660px';
+  document.getElementById('ppDrawer').classList.remove('show');
+  if(!document.getElementById('pvDrawer').classList.contains('show'))
+    document.getElementById('overlay').classList.remove('show');
+}
+
+/* ================= 路由联动 ================= */
+function onRouteChange(){
+  const sel=id=>{const s=document.getElementById(id);return s.options[s.selectedIndex];};
+  const g=sel('genRoute'),f=sel('fixRoute'),a=sel('aiRoute');
+  const cloudUsed=!g.dataset.local||!f.dataset.local||!a.dataset.local;
+  document.getElementById('egressCard').classList.toggle('hidden',!cloudUsed);
+  document.getElementById('asGen').textContent=(g.dataset.local?'本地 ':'云 · ')+g.textContent.split('· ')[1];
+  document.getElementById('asFix').textContent=(f.dataset.local?'本地 ':'云 · ')+f.textContent.split('· ')[1];
+  document.getElementById('asAi').textContent=(a.dataset.local?'本地 ':'云 · ')+a.textContent.split('· ')[1];
+  document.getElementById('asEgress').textContent=cloudUsed?'有（见清单）':'无';
+  document.getElementById('asEgress').style.color=cloudUsed?'var(--amber)':'var(--green)';
+  document.getElementById('asMode').textContent=cloudUsed?'含云路由':'local_only';
+  document.getElementById('asMode').style.color=cloudUsed?'var(--amber)':'var(--green)';
+  const pill=document.getElementById('routePill');
+  if(cloudUsed){
+    pill.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F5B85C" stroke-width="2" stroke-linecap="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg> 含云路由 · 数据将出境 <span class="dot" style="background:var(--amber);box-shadow:0 0 6px rgba(245,184,92,.6)"></span>';
+  }else{
+    pill.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--green)"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> 仅本地 · qwen3-32b <span class="dot"></span>';
+  }
+}
+function doBackup(){toast('备份完成（演示）');document.getElementById('bk1').textContent='app-20261014-1030.db';}
+
+/* 分组导航滚动高亮 */
+const links=[...document.querySelectorAll('.sn-link')];
+const groups=links.map(l=>document.querySelector(l.getAttribute('href')));
+document.getElementById('contentScroll').addEventListener('scroll',()=>{
+  let cur=0;
+  groups.forEach((g,i)=>{if(g&&g.getBoundingClientRect().top<150)cur=i});
+  links.forEach((l,i)=>l.classList.toggle('active',i===cur));
+});
+links.forEach(l=>l.addEventListener('click',e=>{
+  e.preventDefault();
+  document.querySelector(l.getAttribute('href')).scrollIntoView({behavior:'smooth'});
+}));
+
+/* ================= 键盘可达性：可点容器获焦 + Enter/Space 激活 ================= */
+(function(){
+  const SEL='.switch,.collapse-head,.fl-link,.model-add';
+  const apply=()=>document.querySelectorAll(SEL).forEach(el=>{if(!el.hasAttribute('tabindex'))el.setAttribute('tabindex','0');});
+  apply();
+  new MutationObserver(apply).observe(document.body,{childList:true,subtree:true});
+  document.addEventListener('keydown',e=>{
+    if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches(SEL)){e.preventDefault();e.target.click();}
+  });
+})();
+</script>
+</body>
+</html>

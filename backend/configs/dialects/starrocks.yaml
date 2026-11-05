@@ -1,0 +1,16 @@
+# StarRocks 能力卡（MySQL 协议；detected_version 由注册/摄取覆盖）
+engine: starrocks
+detected_version: "3.x"
+supports:
+  - CTE: WITH（不支持 RECURSIVE）
+  - 窗口: ROW_NUMBER/RANK/LAG/LEAD/FIRST_VALUE
+  - JSON 系: JSON_QUERY/JSON_VALUE/GET_JSON_STRING
+  - 正则: REGEXP/REGEXP_EXTRACT/REGEXP_REPLACE
+  - 位图/近似: BITMAP_* / APPROX_COUNT_DISTINCT / HLL_*
+notes:
+  - "物化视图透明改写：直接查基表，优化器自动命中 MV"
+  - "时间过滤走分区列原值，避免函数包裹（分区裁剪失效）"
+  - "大分页用键集分页（WHERE id > ?），避免深 OFFSET"
+forbidden:
+  - "禁止 INTO OUTFILE（R15 硬阻断；导出用结果卡「导出 CSV」）"
+  - "禁止 UPDATE/DELETE 无 WHERE（确认门升级）"

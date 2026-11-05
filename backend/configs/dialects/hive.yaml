@@ -1,0 +1,16 @@
+# Hive 能力卡（HiveServer2；无 KILL 通道，停止=客户端断开）
+engine: hive
+detected_version: "3.x"
+supports:
+  - CTE: WITH
+  - 窗口: ROW_NUMBER/RANK/LAG/LEAD/FIRST_VALUE
+  - 正则: RLIKE/REGEXP/REGEXP_EXTRACT/REGEXP_REPLACE
+  - 集合: EXPLODE/LATERAL VIEW/COLLECT_SET/COLLECT_LIST
+  - JSON 系: GET_JSON_OBJECT/JSON_TUPLE
+notes:
+  - "分区列过滤必须写字面量范围（分区裁剪是 Hive 性能生命线）"
+  - "大表关联开 SMB/MapJoin 由服务端配置决定，提示层不承诺"
+  - "无 OFFSET 分页：LIMIT n 仅截断；分页用 ROW_NUMBER 窗口过滤"
+forbidden:
+  - "禁止 UPDATE/DELETE（多数 Hive 部署非事务表，直接不支持）"
+  - "禁止 msck repair 等元数据维护语句（管理面操作）"

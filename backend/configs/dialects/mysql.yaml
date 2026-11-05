@@ -1,0 +1,14 @@
+# MySQL 能力卡（默认注入；detected_version 由注册/摄取覆盖；<8.0 能力降级标注）
+engine: mysql
+detected_version: "8.0"
+supports:
+  - CTE: WITH / WITH RECURSIVE（8.0+）
+  - 窗口: ROW_NUMBER/RANK/LAG/LEAD/FIRST_VALUE（8.0+）
+  - JSON 系: JSON_EXTRACT/JSON_TABLE
+  - 正则: REGEXP/REGEXP_SUBSTR
+notes:
+  - "时间过滤走索引列原值，避免 DATE(col)= 包裹（索引失效）"
+  - "大分页用键集分页（WHERE id > ?），避免深 OFFSET"
+forbidden:
+  - "禁止 INTO OUTFILE/DUMPFILE（R15 硬阻断；导出用结果卡「导出 CSV」）"
+  - "禁止 UPDATE/DELETE 无 WHERE（确认门升级）"

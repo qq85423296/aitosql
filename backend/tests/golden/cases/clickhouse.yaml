@@ -1,0 +1,49 @@
+# golden 用例 · ClickHouse 方言（C1 扩充：SELECT/JOIN/CTE窗口/聚合日期/安全拒绝）
+- id: ch_daily_uv
+  dialect: clickhouse
+  question: 2026 年 9 月起每天的独立访客数
+  sql: |
+    SELECT toDate(event_time) AS d, uniq(user_id) AS uv
+    FROM logs
+    WHERE event_time >= '2026-09-01 00:00:00'
+    GROUP BY toDate(event_time)
+  expect_ast: {tables: [logs], where_has: ["event_time >= '2026-09-01 00:00:00'"]}
+- id: ch_join_events_users
+  dialect: clickhouse
+  question: 各城市用户的页面浏览量（关联用户维度）
+  sql: |
+    SELECT e.user_id, u.city, COUNT(*) AS pv
+    FROM events e
+    JOIN users u ON e.user_id = u.id
+    WHERE e.event_date >= '2026-09-01'
+    GROUP BY e.user_id, u.city
+  expect_ast: {tables: [events, users], where_has: ["e.event_date >= '2026-09-01'"]}
+- id: ch_window_row_number
+  dialect: clickhouse
+  question: 各城市浏览量最高的用户排行
+  sql: |
+    SELECT user_id, pv,
+           row_number() OVER (PARTITION BY city ORDER BY pv DESC) AS rn
+    FROM (
+      SELECT user_id, city, COUNT(*) AS pv
+      FROM events
+      GROUP BY user_id, city
+    )
+  expect_ast: {has_window: "ROW_NUMBER", tables: [events]}
+- id: ch_cte_daily_cumsum
+  dialect: clickhouse
+  question: 每天浏览量及累计浏览量（CTE 先聚合再窗口累加）
+  sql: |
+    WITH daily AS (
+      SELECT toDate(event_time) AS d, COUNT(*) AS pv
+      FROM logs
+      GROUP BY toDate(event_time)
+    )
+    SELECT d, pv, SUM(pv) OVER (ORDER BY d) AS cum
+    FROM daily
+  expect_ast: {has_cte: true, tables: [logs]}
+- id: ch_r15_explain_analyze
+  dialect: clickhouse
+  question: 任意（安全拒绝：EXPLAIN ANALYZE 真实执行）
+  sql_inject: "EXPLAIN ANALYZE SELECT * FROM logs"
+  expect: {hard_block: "R15-B4", status: failed}

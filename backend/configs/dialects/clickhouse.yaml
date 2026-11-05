@@ -1,0 +1,15 @@
+# ClickHouse 能力卡（默认注入；readonly=1 强制，无 KILL 通道——客户端断开语义）
+engine: clickhouse
+detected_version: "24.3"
+supports:
+  - 聚合系: uniq/quantile/argMax/groupArray
+  - 时间系: toStartOfMonth/toStartOfDay/toDateTime
+  - 数组/Lambda: arrayJoin/arrayMap
+  - 窗口: lagInFrame/leadInFrame（21.4+）
+notes:
+  - "强制 readonly=1：写操作将被服务端拒绝（设置页开关 query.ch_readonly）"
+  - "无 KILL 通道：停止 = 客户端断开，服务端可能继续执行至 profile 上限"
+  - "ORDER BY 键前缀过滤优先；避免 SELECT * 宽表"
+forbidden:
+  - "禁止写操作（readonly=1，服务端拒绝；文案走 R06 只读联动模板）"
+  - "禁止 SYSTEM/KILL 语句族（R01 白名单外）"

@@ -1,0 +1,127 @@
+# AItosql 个人版 Text2SQL · 后端工程（uv 管理，锁次版本）
+# 溯源：plan.md §2.2 依赖清单；约束纪律：① uv.lock 锁次版本 ② 三方 import 收口（import-linter 强制）③ 升级门禁 = golden 三方言 + T4.2
+[project]
+name = "aitosql"
+version = "0.1.0"
+description = "AItosql 个人版 Text2SQL（智能优先、本地部署、单用户）"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115,<1.0",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7,<3",
+    "langgraph>=0.2",
+    "langgraph-checkpoint-sqlite>=2.0",
+    "sqlglot==30.18.*",
+    "pymysql>=1.1",
+    "clickhouse-connect>=0.8",
+    "psycopg[binary]>=3.2",   # PostgreSQL 驱动（二进制轮）
+    "pyhive>=0.7",            # HiveServer2 驱动（auth=NONE 纯 thrift；SASL/LDAP 需另装 puresasl）
+    "thrift>=0.16",
+    "thrift_sasl>=0.4.3",
+    "httpx>=0.27",
+    "anyio>=4.4",
+    "sqlite-vec>=0.1",
+    "keyring>=25",
+    "cryptography>=43",
+    "pyyaml>=6.0",
+    "tiktoken>=0.8",
+    "python-ulid>=2,<4",
+]
+
+[project.optional-dependencies]
+vector = ["fastembed>=0.4,<1"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "import-linter>=2.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit", "tests/golden"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "golden_engine: 真实三方言引擎集成测试（需 AITOSQL_TEST_ENGINE=1 + 对应 DSN 环境变量；缺环境明确 skip，CI 容器分组启用）",
+]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 110
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+# 中文注释/文档串为工作区既有风格：全角标点歧义类规则（RUF001/002/003）不启用
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = false
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = "tests/"
+
+# ---- import-linter 分层契约（SSOT §2.3 D1-D6 / design C4，T0.4 CI 强制）----
+[tool.importlinter]
+root_package = "app"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "D1 分层：api → graph → L3 八模块 → store"
+type = "layers"
+layers = [
+    "app.api",
+    "app.graph",
+    "app.ingest | app.retrieval | app.llm | app.sqlcheck | app.exec | app.verify | app.ai",
+    "app.store",
+]
+
+[[tool.importlinter.contracts]]
+name = "D1-补 八领域模块互禁导入"
+type = "independence"
+modules = [
+    "app.ingest",
+    "app.retrieval",
+    "app.llm",
+    "app.sqlcheck",
+    "app.exec",
+    "app.verify",
+    "app.ai",
+]
+
+[[tool.importlinter.contracts]]
+name = "D3 langgraph 唯一 import 点 = app.graph"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = [
+    "app.api", "app.ingest", "app.retrieval", "app.llm",
+    "app.sqlcheck", "app.exec", "app.verify", "app.ai", "app.store",
+]
+forbidden_modules = ["langgraph", "langgraph_checkpoint_sqlite"]
+
+[[tool.importlinter.contracts]]
+name = "D3 sqlglot 唯一 import 点 = app.sqlcheck"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = [
+    "app.api", "app.graph", "app.ingest", "app.retrieval",
+    "app.llm", "app.exec", "app.verify", "app.ai", "app.store",
+]
+forbidden_modules = ["sqlglot"]
+
+[[tool.importlinter.contracts]]
+name = "D3 fastembed 唯一 import 点 = app.retrieval.vector"
+type = "forbidden"
+allow_indirect_imports = true
+source_modules = [
+    "app.api", "app.graph", "app.ingest", "app.llm",
+    "app.sqlcheck", "app.exec", "app.verify", "app.ai", "app.store",
+    "app.retrieval.keyword", "app.retrieval.supply",
+]
+forbidden_modules = ["fastembed"]
