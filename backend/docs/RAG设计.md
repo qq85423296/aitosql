@@ -1,6 +1,6 @@
 # AItosql 本地 RAG 设计文档
 
-> 版本：v3.2 加固后（2026-10-18）｜范围：`app/retrieval/*`、`app/store/samples.py`、`app/migrations/0009_rag_revisions.sql`
+> 范围：`app/retrieval/*`、`app/store/samples.py`、`app/migrations/0009_rag_revisions.sql`
 
 ## 1. 是否需要 RAG
 
@@ -10,7 +10,7 @@
 - 必须从「表/字段/注释/字段标准/维度枚举/指标口径/已确认关系/历史样本」中**按问题检索**最相关子集注入；
 - 这正是 RAG 的经典形态：离线建索引 → 在线召回 → 融合排序 → 预算装配 → 注入生成。
 
-结论：不是"要不要做 RAG"，而是"已有的 RAG 是否做对了"。审计发现原实现骨架正确（FTS5 bigram + sqlite-vec + RRF 融合），但有 6 处正确性缺陷，本轮已全部修复。
+结论：不是"要不要做 RAG"，而是"已有的 RAG 是否做对了"。实现骨架为 FTS5 bigram + sqlite-vec + RRF 融合；早期实现中的 6 处正确性缺陷已全部修复（见下节清单）。
 
 ## 2. 修复前缺陷清单（均已修复并附回归测试）
 
@@ -93,15 +93,15 @@
 - 嵌入模型 `local_files_only=True`，缓存目录 `AITOSQL_MODEL_CACHE`（默认 `data/models/`）——运行时零网络；
 - fastembed 为可选依赖（`pyproject.toml [project.optional-dependencies] vector`），核心安装不拉 torch/onnxruntime；
 - 向量加载失败不永久落库 `schema.vector=off`（60s 重试窗口内重试），一次抖动不永久降级；
-- 导入契约 `D3 fastembed 唯一 import 方 = app.retrieval.vector` 由 import-linter 强制。
+- 导入契约「fastembed 唯一 import 方 = app.retrieval.vector」由 import-linter 强制。
 
-### 4.7 生成反馈闭环（演进 #1，已实现 2026-10-19）
+### 4.7 生成反馈闭环
 
 - **回写**：execute 成功（行返回/写成功）→ `sqlcheck.rules.tables_in_sql()` 从最终 SQL 提取真实物理表（CTE 名剔除，sqlglot 唯一入口契约不破）→ `retrieval_feedback` 表 UPSERT 累计（0010 迁移）；回写是附加产物，失败静默不污染主结果；
 - **加权**：召回时 `boosts()` 给每表 `log1p(success_count)` 增量，RRF 分数乘性加权 `score × (1 + 0.2·log1p(n))`——log 刻度让高频表优势收敛，新召回表不被永久压制；只影响排序不改变召回集合；`(score DESC, name ASC)` 确定性锚点不变；
 - **证据**：`test_feedback_record_and_boost_reorders_rrf`（UPSERT/反超/确定性）、`test_supply_applies_feedback_boost`（端到端排序+trace）、`test_execute_success_records_feedback`（节点级回写计数）。
 
-### 4.8 列级召回（演进 #2，已实现 2026-10-19）
+### 4.8 列级召回
 
 - 字段数超过 `schema.wide_table_columns`（默认 200，0 关闭）的宽表，注入时按问题相关性裁剪到 `schema.wide_table_keep`（默认 60）；
 - **必留**：主键/分区键/分桶键、绑定字段标准的列、已确认关系的关联键（JOIN 条件不丢）；
@@ -109,7 +109,7 @@
 - 注入文本追加 `[宽表：共 N 列，按问题相关性注入 M 列]` 标记；无新索引、纯本地、零额外模型成本；
 - **证据**：`test_wide_table_pruned_by_question_relevance`（121 列裁到 ≤12、相关列/主键保留、无关列剔除、低于阈值不触发）。
 
-### 4.9 查询日志挖掘（演进 #3，已实现 2026-10-19）
+### 4.9 查询日志挖掘
 
 - `retrieval/insights.py::comment_gaps()`：使用证据 = `retrieval_feedback` 成功计数 ∪ 历史 `query`（status=done）question/sql_final 表名提及扫描（词边界正则，确定性）；
 - 对每张使用 ≥min_uses 的表算注释覆盖率（表注释 + 字段注释占比），输出 `uses/coverage/missing/suggestion`，按 使用次数 DESC → 覆盖率 ASC → 表名 ASC 排序；
@@ -123,8 +123,7 @@ RAG 只读元数据库（app.db），**不索引业务行数据**——`document
 ## 6. 验证证据
 
 - `tests/unit/test_retrieval/test_rag_hardening.py`：文档完整性、同秒编辑 FTS 刷新、关系桥接+pending 隔离、全模式预算、few-shot 相关性+数据源隔离、过期向量跳过、真 sqlite-vec cosine 检索、并发重建拒绝；
-- `tests/unit/test_retrieval/test_evolution.py`：反馈闭环（提取/加权/节点回写）、宽表列级召回、日志挖掘排序；
-- 全量门禁：`ruff check` 0 错误、`mypy app` 0 错误、`lint-imports` 5 契约全 kept、`pytest` 全通过。
+- `tests/unit/test_retrieval/test_evolution.py`：反馈闭环（提取/加权/节点回写）、宽表列级召回、日志挖掘排序。
 
 ## 7. 后续演进方向（未做，按优先级）
 

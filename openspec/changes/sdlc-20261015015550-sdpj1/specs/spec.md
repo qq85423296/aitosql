@@ -1,8 +1,8 @@
 # AItosql 个人版 Text2SQL · 需求规格（spec）
 
 > 阶段产物：01-requirements / spec ｜ 运行：sdlc-20261015015550-sdpj1
-> 配套：同目录 `propose.md`（目标/范围/场景/验收标准/风险分析）。
-> 溯源：全部条目来自 `整体需求解决方案.md`（SSOT v3.2）及 `数据源模块设计.md`；本文不新造接口/字段，无法验证处以 **TODO** 标注。
+> 配套：`../proposal.md`（目标/范围/场景/验收标准/风险分析）。
+> 溯源：全部条目来自 SSOT v3.2（整体需求解决方案）及数据源模块配套设计；本文不新造接口/字段，无法验证处以 **TODO** 标注。
 
 ---
 
@@ -12,7 +12,7 @@
 
 | ID | 功能 | 验收要点（摘要） | 原型落位 |
 |----|------|----------------|---------|
-| FR-Q1 | 会话管理：分组（置顶/普通/归档折叠）、行内重命名、删除行内二次确认、⌘K 列表内过滤、计数徽标 | 排序 pinned>updated_at；删除二次确认；归档进折叠组（D11：⌘K=列表内过滤聚焦，非命令面板） | 左侧会话抽屉 |
+| FR-Q1 | 会话管理：分组（置顶/普通/归档折叠）、行内重命名、删除行内二次确认、⌘K 列表内过滤、计数徽标 | 排序 pinned>updated_at；删除二次确认；归档进折叠组（⌘K=列表内过滤聚焦，非命令面板） | 左侧会话抽屉 |
 | FR-Q2 | 数据源切换器（顶部下拉，含离线徽标） | 切离线库：Composer 提示「仅生成不执行」，执行键替换为「复制 SQL」 | 头部下拉 |
 | FR-Q3 | SSE 管线阶段卡：阶段推进 + 耗时 + 停止 | stage 8 枚举带 round（§10.3）；Esc/按钮停止触发 stop+KILL | 阶段卡 |
 | FR-Q4 | 推理过程块（reasoning 折叠） | 默认收起，点击展开 | 问答 1 |
@@ -43,7 +43,7 @@
 | FR-D10 | ER 图谱（SVG 缩放/拖拽/节点信息卡） | 节点含主键/分区/分桶标识；边双语；摆位存储见 TODO-N1 |
 | FR-D11 | 字段标准/维度标准/指标口径 CRUD | 维度枚举值管理；指标表达式保存时 sqlglot 校验 |
 | FR-D12 | AI 建议队列（comment/std_bind/relation/metric） | 分组评审、批量采纳/忽略；采纳映射 §12.2 |
-| FR-D13 | 离线数据源（DDL 解析 / CSV 模板 / AI 草稿） | DDL 部分失败行标红、成功部分可入库；R13 降级黄警（D04）；只生成不执行 |
+| FR-D13 | 离线数据源（DDL 解析 / CSV 模板 / AI 草稿） | DDL 部分失败行标红、成功部分可入库；R13 降级黄警；只生成不执行 |
 
 ### 1.3 样例库页（FR-S1~S4，原型 `prototype/samples.html`）
 
@@ -60,7 +60,7 @@
 |----|------|---------|
 | FR-C1 | 提供商管理（卡片列表 + 抽屉编辑；内置目录 10 类型；密钥 eye 切换；模型目录 CRUD + 拉取） | 空模型 ID 校验「模型 N: 模型 ID 不能为空」 |
 | FR-C2 | 测试连接（成功：延迟+模型数；失败：401/拒绝分支） | 失败红卡注明「密钥未外发」 |
-| FR-C3 | 路由策略（生成/修正/AI 补全三路） | 出境清单矩阵联动（§12.5，E6 红标）；verify_llm 在 local_only 置灰（D07） |
+| FR-C3 | 路由策略（生成/修正/AI 补全三路） | 出境清单矩阵联动（§12.5，E6 红标）；verify_llm 在 local_only 置灰 |
 | FR-C4 | 提示词维护（系统模板变量校验/恢复默认 + 能力卡方言 Tab + 行为开关 ×5 + 组装预览抽屉） | 预览 8 段与真实注入逐字一致（§10.4） |
 | FR-C5 | 查询与安全参数 + 三层防线展示 | 默认值与 SSOT §4 一致 |
 | FR-C6 | Schema 注入（模式选择 + 预算滑块 + 枚举上限） | 滞后带说明（55-65%） |
@@ -78,14 +78,14 @@
 | BR-5 | AST 校验 R01-R15（含 R15 五断言硬阻断） | sqlcheck/rules.py |
 | BR-6 | 写操作确认门：interrupt + CAS 裁决 + CH 只读文案 | confirm_gate |
 | BR-7 | 执行：超时/LIMIT AST 注入/工作·管理连接分离/CONNECTION_ID/元信息采集/CSV 落盘 | exec/* |
-| BR-8 | verify_result：规则层 5 检查 + 回退全局 1 次（D09）+ 可选 LLM 层 | verify/* |
+| BR-8 | verify_result：规则层 5 检查 + 回退全局 1 次 + 可选 LLM 层 | verify/* |
 | BR-9 | 修正回路：≤3 轮 + SQL 指纹振荡检测 + 终止照常交付 | correct |
-| BR-10 | SSE 16 事件 + query_event 落库 + 幂等续播 + stop/KILL + D03 自动续跑 | graph/runner.py、api/sse.py |
+| BR-10 | SSE 16 事件 + query_event 落库 + 幂等续播 + stop/KILL + 崩溃自动续跑 | graph/runner.py、api/sse.py |
 | BR-11 | 提供商适配（OpenAI 兼容/Anthropic/Ollama）+ 密钥 Fernet/keyring 五款 | llm/* |
 | BR-12 | 提示词组装：8 段信封 + 5 步裁剪 + 预览逐字一致 | llm/prompts.py |
 | BR-13 | 样例库：stale 治理 + 复验 + semantic_rev 缓存命中 | store/samples.py |
 | BR-14 | AI 建议队列：四类 payload + 采纳映射 | store/suggestions.py |
-| BR-15 | 备份：VACUUM INTO 滚动 + 密钥剥离 + 可选加密（D08）+ 恢复语义 | store/backup.py |
+| BR-15 | 备份：VACUUM INTO 滚动 + 密钥剥离 + 可选加密 + 恢复语义 | store/backup.py |
 | BR-16 | 记忆与会话压缩：flush 三入口 + 水位线合并 + 压缩抢救 + 注入 | store/memory.py |
 
 ---
@@ -160,7 +160,7 @@
 
 ### 2.7 session（会话）/ clarify_pref（口径偏好）
 
-- **session**：id TEXT PK（`s_`+ULID）/ title（首问完成自动生成=问题去空白前 18 字，重命名后不再自动改写）/ datasource_id FK / pinned / archived / created_at / updated_at；索引 idx_session_list(archived, pinned DESC, updated_at DESC)。v3.1 增补：**summary**（滚动摘要，有损链）、**summary_upto**（摘要覆盖到的最后 query_id）。
+- **session**：id TEXT PK（`s_`+ULID）/ title（首问完成自动生成=问题去空白前 18 字，重命名后不再自动改写）/ datasource_id FK / pinned / archived / created_at / updated_at；索引 idx_session_list(archived, pinned DESC, updated_at DESC)。另含 **summary**（滚动摘要，有损链）、**summary_upto**（摘要覆盖到的最后 query_id）。
 - **clarify_pref**：id / datasource_id / term / chosen_rule / created_at；UNIQUE(datasource_id, term)；命中免问。
 
 ### 2.8 query（查询）/ result_preview（结果预览）
@@ -173,7 +173,7 @@
 
 | 字段 | 说明 |
 |------|------|
-| query_id FK ON DELETE CASCADE | 级联自闭环；不设 retention（D12 关闭，TODO-N8） |
+| query_id FK ON DELETE CASCADE | 级联自闭环；不设 retention（TODO-N8） |
 | seq | 单调递增，续播接缝；PRIMARY KEY(query_id, seq) |
 | type | §10.3 事件类型；控制帧 stream_resumed 不入表 |
 | payload | 错误类落库前过脱敏（§12.5 第三出口）；result 批量行不入此表；单事件 ≤ sse.event_payload_kb(16KB) 超出截断标注 |
@@ -192,7 +192,7 @@ id / datasource_id FK / question / **question_norm**（小写/去空白/去标�
 - **schema_fts**：FTS5 虚拟表（datasource_id UNINDEXED, table_name, col_name, comment），tokenize=unicode61，中文由应用层 bigram 展开后写入；**只消费消毒后文本**（ingest/sanitize.py 唯一写入入口）。
 - **schema_vec**：运行期按 `schema.embed_dim`（默认 512）建表，不写死 migration；换模型流程：改 setting → 重建 vec 表（期间向量检索临时 off，降级纯 FTS）→ 完成自动恢复。
 
-### 2.13 记忆模块（migration 0004，v3.1）
+### 2.13 记忆模块（migration 0004）
 
 | 表 | 要点 |
 |----|------|
@@ -207,7 +207,7 @@ id / datasource_id FK / question / **question_norm**（小写/去空白/去标�
 |------|------|------|
 | data/app.db | 终态权威（生命周期+事件流+产出物） | 入备份；0600 权限 |
 | data/checkpoints.db | 图进度 + interrupt 门负载 | **不入备份**（最大明文聚合体）；备份恢复后 running 一律 failed+标注 |
-| data/backups/ | VACUUM INTO 滚动备份 | keep=10；可选加密（D08） |
+| data/backups/ | VACUUM INTO 滚动备份 | keep=10；可选加密 |
 | data/exports/ | 纯 SELECT 全量 CSV（`{query_id}.csv`，UTF-8 BOM + RFC4180） | 瞬态目录：TTL 24h 定时清理 + 2048MB LRU + 启动清扫孤儿文件；不入备份、gitignore |
 
 ---
@@ -228,7 +228,7 @@ id / datasource_id FK / question / **question_norm**（小写/去空白/去标�
 | GET /queries/:id/export.csv | FileResponse 流式；响应头回显 data_max_time；仅纯 SELECT 成功时存在文件 |
 | GET /sessions/:id/queries | 会话消息快照（E5）：query+result_preview+query_event 聚合，含 last_seq 与 clarify_choice，不依赖 checkpoint |
 
-### 3.2 SSE 十六事件（终稿）
+### 3.2 SSE 十六事件
 
 `stage`（8 枚举 supply/generate/validate/clarify/confirm/execute/verify/correct，带 round/status/elapsed_ms）· `contract` · `sql`（带 round，逐轮重发）· `risk` · `clarify_required` · `confirm_required`（含 est_rows）· `correction`（判定入回路即发）· `meta`（两次全字段：post_supply / pre_done）· `result_meta` · `result` · `verify` · `followups` · `stopped` · `done` · `error`。另有连接级控制帧 `stream_resumed`（无 seq 无 id 不入表）与心跳注释帧 `:hb`（每 sse.heartbeat_s=15s，不占 seq）。
 
@@ -261,11 +261,11 @@ required：`reasoning`(≤1200 字符) / `assumptions[]`{text, impact:high|low, 
 
 ### 4.1 AST 校验 R01-R15（sqlcheck/rules.py）
 
-R15 硬阻断族（优先于 R01-R14，五断言：B1 多语句 / B2 解析失败 fail-closed / B3 exp.Into 文件变体 / B4 EXPLAIN ANALYZE / B5 契约外语句族 CALL·DO）；红警：R01 语句类型白名单外（fail-closed）、R02 UPDATE/DELETE 无 WHERE、R05 DDL/DCL、R06 非纯 SELECT（含 REPLACE INTO→confirm_gate）、R10 JOIN 缺 ON（进修正回路）、R13 幻觉标识符（online 红 → correct/need_tables；offline 黄警照常交付 D04）；黄警：R03 未用主键、R04 纯 SELECT 无 LIMIT（自动修正）、R07 未注册数据源/跨库、R08 函数不在能力卡、R09 大表 SELECT *、R11 子查询 >3 层、R12 大表前缀通配 LIKE、R14 分区表 WHERE 未含分区键。处置判据：可解释/可量化→告警+确认门；不可逆但可拍板→确认门；不可解释/绕过门本身→硬阻断（§1 P3 补注）。
+R15 硬阻断族（优先于 R01-R14，五断言：B1 多语句 / B2 解析失败 fail-closed / B3 exp.Into 文件变体 / B4 EXPLAIN ANALYZE / B5 契约外语句族 CALL·DO）；红警：R01 语句类型白名单外（fail-closed）、R02 UPDATE/DELETE 无 WHERE、R05 DDL/DCL、R06 非纯 SELECT（含 REPLACE INTO→confirm_gate）、R10 JOIN 缺 ON（进修正回路）、R13 幻觉标识符（online 红 → correct/need_tables；offline 黄警照常交付）；黄警：R03 未用主键、R04 纯 SELECT 无 LIMIT（自动修正）、R07 未注册数据源/跨库、R08 函数不在能力卡、R09 大表 SELECT *、R11 子查询 >3 层、R12 大表前缀通配 LIKE、R14 分区表 WHERE 未含分区键。处置判据：可解释/可量化→告警+确认门；不可逆但可拍板→确认门；不可解释/绕过门本身→硬阻断（§1 P3 补注）。
 
-### 4.2 verify_result 规则层（全过才 pass；回退共用全局 1 次额度 D09）
+### 4.2 verify_result 规则层（全过才 pass；回退共用全局 1 次额度）
 
-行数为 0（回退：放宽最近一个枚举/范围过滤）/ 关键列（SELECT 首列）全 NULL（回退）/ 行数 < EXPLAIN 估计 1%（回退）/ 汇总对账偏差 >0.1%（unverified 标注）/ 分区裁剪确认（仅记录）。LLM 层（feature.verify_llm）：local_only 置灰禁用（D07）；输入截断前 5 行 × 每格 50 字符；出境清单 E6 红标。
+行数为 0（回退：放宽最近一个枚举/范围过滤）/ 关键列（SELECT 首列）全 NULL（回退）/ 行数 < EXPLAIN 估计 1%（回退）/ 汇总对账偏差 >0.1%（unverified 标注）/ 分区裁剪确认（仅记录）。LLM 层（feature.verify_llm）：local_only 置灰禁用；输入截断前 5 行 × 每格 50 字符；出境清单 E6 红标。
 
 ### 4.3 干跑安全四则 + EXPLAIN 三方言矩阵
 
@@ -287,7 +287,7 @@ FTS5 top-12（bm25 聚合到表级）+ 向量 top-4（distance≤0.35，FTS 命�
 
 ## 5. 非功能要求（NFR）
 
-### 5.1 性能（T4.3 口径，D02）
+### 5.1 性能（T4.3 口径）
 
 | 项 | 指标 |
 |----|------|
@@ -303,12 +303,12 @@ FTS5 top-12（bm25 聚合到表级）+ 向量 top-4（distance≤0.35，FTS 命�
 - 密钥：keyring 五款 → AITOSQL_FERNET_KEY 环境变量（仅内存）→ 首启生成；keyring 不可用 fail-closed 拒启；轮换走 E4001 重新录入不迁移；数据文件 0600；备份双封且剥离密文。
 - 脱敏规则表统一适用三出口（回喂 LLM / 前端回显 / query_event 落库）：连接串→[HOST]/[PORT]、账号密码→[USER]/[CREDENTIAL]、IP 白名单仅放行 127.0.0.1/localhost、SQL 字面值→`?`。
 - 出境清单矩阵 E1-E8；绝不外发：凭证、完整结果集、连接地址明文；local_only（三路全本地）= 零出境。
-- SQL 安全三层防线 + R15 硬阻断；CH 强制 readonly=1，MySQL 只读建议级（纵深不对称 D05）。
+- SQL 安全三层防线 + R15 硬阻断；CH 强制 readonly=1，MySQL 只读建议级（纵深不对称）。
 
 ### 5.3 可靠性
 
 - 幂等：client_request_id 重发不重复执行；SSE seq 单调 + 幂等去重；门裁决与 stop CAS。
-- 崩溃恢复：D03 启动清扫自动续跑（七条终稿 SSOT §5.4）；写操作续跑重过确认门；门不自动放行。
+- 崩溃恢复：启动清扫自动续跑（七条，SSOT §5.4）；写操作续跑重过确认门；门不自动放行。
 - 备份：每 4h VACUUM INTO，keep=10，可选加密；恢复语义 ≠ 进程重启。
 - 降级链：检索失败→full 截断；契约解析失败→重试→降级 SQL 卡；EXPLAIN 失败→E3001 标注；vec 重建期→纯 FTS；记忆合并失败→静默下轮重试；模型离线→E2001。
 - **强制约束（N7）**：会话压缩必须先完成 flush（待压缩轮次事实抢救进流水账）；flush 失败时压缩推迟，保证「40 轮压缩事实零丢失」golden 口径。
@@ -333,7 +333,7 @@ FTS5 top-12（bm25 聚合到表级）+ 向量 top-4（distance≤0.35，FTS 命�
 | query.auto_limit / timeout_s / max_fix_rounds | 1000 / 30 / 3 | 执行护栏 |
 | query.write_confirm / ch_readonly | true / true | 写确认门 / CH 强制只读 |
 | schema.mode / budget_pct / enum_top_n | auto / 60 / 8 | 供给预算（滞后带 55-65%） |
-| schema.embed_model / embed_dim | BAAI/bge-small-zh-v1.5 / 512 | D01 定版，联动登记 |
+| schema.embed_model / embed_dim | BAAI/bge-small-zh-v1.5 / 512 | 换模型需按 vec 表重建流程联动 |
 | feature.clarify_gate / verify_rules / verify_llm / followups / partition_hint | true/true/false/true/true | 行为开关（砍项顺序：先 verify_llm 后 followups） |
 | sample.fewshot_n / cache / auto_stale | 3 / true / true | 样例与缓存 |
 | memory.enabled / max_tokens / consolidate_min_gap_min / inject | true / 4000 / 30 / true | 记忆模块 |
@@ -345,7 +345,7 @@ FTS5 top-12（bm25 聚合到表级）+ 向量 top-4（distance≤0.35，FTS 命�
 
 ---
 
-## 6. 待确认 / TODO 汇总（承接 propose.md §8）
+## 6. 待确认 / TODO 汇总（承接 proposal.md §8）
 
 | # | 项 | 默认假设 | 责任阶段 |
 |---|----|---------|---------|
@@ -361,4 +361,4 @@ FTS5 top-12（bm25 聚合到表级）+ 向量 top-4（distance≤0.35，FTS 命�
 
 ## 7. 验收口径索引
 
-需求级验收标准 14 条见 `propose.md` §9；任务级验收（T0.1~T4.4，含每条交付物与依赖）以 SSOT §14 为执行依据；需求-任务追溯矩阵见 SSOT §15（无孤儿需求、无孤儿任务，本次分析复核一致）。
+需求级验收标准 14 条见 `../proposal.md` §9；任务级验收（T0.1~T4.4，含每条交付物与依赖）以 SSOT §14 为执行依据；需求-任务追溯矩阵见 SSOT §15（无孤儿需求、无孤儿任务）。

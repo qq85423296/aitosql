@@ -1,8 +1,8 @@
 # AItosql 个人版 Text2SQL · 技术设计（design）
 
 > 阶段产物：03-design / design ｜ 运行：sdlc-20261015015550-sdpj1
-> 上游：`../01-requirements/propose.md` + `../01-requirements/spec.md`（需求侧唯一输入）、`../02-prototype/prototype-design.md`（交互契约）；权威依据：`整体需求解决方案.md`（SSOT v3.2，1169 行，评审闭环版）。
-> 证据纪律：本文引用的接口/字段/默认值均来自 SSOT 对应章节、spec.md 数据字典、`.roundtable/evidence/`（sqlglot 30.18 实测探针）或 `prototype/*.html`（验收基准），逐条标注出处；**工作区无既有产品代码（已用 glob 核验 `app/ web/ scripts/ tests/ configs/` 均不存在）**，凡无法由上述证据佐证的结论一律标 **TODO**，置信度不超「中」。
+> 上游：`proposal.md` 与 `specs/spec.md`（需求侧唯一输入）、`prototype/*.html`（交互验收基准）；权威依据：SSOT v3.2（整体需求解决方案）。
+> 证据纪律：本文引用的接口/字段/默认值均来自 SSOT 对应章节、spec.md 数据字典、sqlglot 30.18 实测探针或 `prototype/*.html`（验收基准），逐条标注出处；**工作区无既有产品代码（已核验 `app/ web/ scripts/ tests/ configs/` 均不存在）**，凡无法由上述证据佐证的结论一律标 **TODO**，置信度不超「中」。
 > 追溯约定：全文设计条目统一编号 **D-xx**（段 3 决策 D-01~D-22、段 4 模块 D-30~D-43），`tasks.md` 每项任务反向追溯到这些条目；段内引用 SSOT 用 `§n` 记。
 
 ---
@@ -16,10 +16,10 @@
 ### 1.2 当前状态（工作区证据）
 
 1. **无产品代码**：`glob {app,web,scripts,tests,configs}/**` 零命中——全新构建（greenfield），无遗留代码约束，亦无「复用已有实现」对象。
-2. **需求侧已闭环**：SSOT v3.2 = v2 + 圆桌架构评审 49 项决议（D01-D14 人类裁决），含真实 DDL（migrations 0001~0004）、QueryState TypedDict、SSE 十六事件、API 30+ 端点、配置默认值 40+ 键、开发计划 4 Phase 23 任务（SSOT §3/§4/§5/§10/§14）。
-3. **关键风险点已有实测证据**：`.roundtable/evidence/probe_r2_r15.py` + `probe_r2_out.txt`（sqlglot 30.18 实测：`SELECT 1;;SELECT 2` → `[Select,None,Select]`；INTO OUTFILE/DUMPFILE 全语序 PARSE_FAIL；`INTO @v` 为唯一可解析 exp.Into 形态；CALL→exp.Command；DO/HANDLER/LOAD DATA→PARSE_FAIL；EXPLAIN ANALYZE→`Describe.style=ANALYZE`；CH 侧 EXPLAIN/SYSTEM/SHOW→Command、GRANT→Grant、KILL QUERY→PARSE_FAIL）。
-4. **视觉与交互基准冻结**：工作区 `prototype/*.html` 四页存在且含复核包/E3010/澄清门等验收锚点（grep 命中 `prototype/index.html:573` 复核包按钮、`:605`/`:845` 未验证文案、`:725` 澄清门）；`artifacts/02-prototype/prototype/` 另有分身增量版（数据外置 data.json、112 个 data-action 锚点经 `proto-check.js` 双向校验通过）。
-5. **配套设计一致**：《数据源模块设计.md》实体/合并策略/AI 补全与 SSOT 基本一致，差异两项（`ai_suggestion.status` 用词、`target` 列）已裁决以 SSOT §3.1 为准（propose §8 #2）。
+2. **需求侧已闭环**：SSOT v3.2 含真实 DDL（migrations 0001~0004）、QueryState TypedDict、SSE 十六事件、API 30+ 端点、配置默认值 40+ 键、开发计划 4 Phase 23 任务（SSOT §3/§4/§5/§10/§14）。
+3. **关键风险点已有实测证据**：sqlglot 30.18 实测探针（`SELECT 1;;SELECT 2` → `[Select,None,Select]`；INTO OUTFILE/DUMPFILE 全语序 PARSE_FAIL；`INTO @v` 为唯一可解析 exp.Into 形态；CALL→exp.Command；DO/HANDLER/LOAD DATA→PARSE_FAIL；EXPLAIN ANALYZE→`Describe.style=ANALYZE`；CH 侧 EXPLAIN/SYSTEM/SHOW→Command、GRANT→Grant、KILL QUERY→PARSE_FAIL）。
+4. **视觉与交互基准冻结**：`prototype/*.html` 四页存在且含复核包/E3010/澄清门等验收锚点，为前端验收基准。
+5. **配套设计一致**：数据源模块配套设计的实体/合并策略/AI 补全与 SSOT 基本一致，差异两项（`ai_suggestion.status` 用词、`target` 列）以 SSOT §3.1 为准（propose §8 #2）。
 
 ### 1.3 约束（每条带来源）
 
@@ -35,8 +35,8 @@
 | C8 | 密钥：keyring 五款 fail-closed 拒启；Fernet；备份剥离密文；数据文件 0600 | SSOT §12.4、§12.3 |
 | C9 | 视觉验收：tokens.css 唯一 token 来源 + stylelint 禁裸 hex；四页对照原型走查 | SSOT §11（V3）、§14 T0.2 |
 | C10 | 质量门禁：golden 滚动门槛 P1≥15/P2≥30/P3≥40/T4.1=50（三方言）；ruff+mypy+import-linter 进 CI | SSOT §14 尾注、T0.4 |
-| C11 | 出境管控：默认 local_only 零出境；云路由触发出境清单 E1-E8（E6 红标）；verify_llm local_only 置灰 | SSOT §12.5、§9.2（D07） |
-| C12 | 离线库（mode=offline）只生成不执行；R13 降级黄警照常交付（D04） | SSOT §5.2、FR-D13 |
+| C11 | 出境管控：默认 local_only 零出境；云路由触发出境清单 E1-E8（E6 红标）；verify_llm local_only 置灰 | SSOT §12.5、§9.2 |
+| C12 | 离线库（mode=offline）只生成不执行；R13 降级黄警照常交付 | SSOT §5.2、FR-D13 |
 
 ---
 
@@ -48,14 +48,14 @@
 |---|---------|---------|
 | G1 | 查询主链路图（supply→generate→validate→双门→execute→verify→correct）以 LangGraph 可中断/可恢复方式实现，终态+事件全部可重放 | propose G3/G4；SSOT §5 |
 | G2 | 安全纵深：R01-R14 告警 + R15 五断言硬阻断 + 写确认门 + CH 强制 readonly=1，全部经 sqlglot AST 实现且有探针复现用例 | propose G2；SSOT §9.1 |
-| G3 | 双库 + 事件溯源支撑三类恢复：崩溃自动续跑（D03）、SSE 断连续播、备份恢复降级 | propose G4；SSOT §5.4/§12.3 |
+| G3 | 双库 + 事件溯源支撑三类恢复：崩溃自动续跑、SSE 断连续播、备份恢复降级 | propose G4；SSOT §5.4/§12.3 |
 | G4 | 语义层闭环：摄取→标准/关系/指标→注入（8 段信封）→AI 建议队列→采纳生效；提示词视图/组装预览与真实注入逐字一致 | propose G1/G5；SSOT §8、§12.2 |
 | G5 | 记忆双层与会话压缩：flush 三入口、水位线合并、压缩先抢救（flush 失败压缩推迟），40 轮压缩事实零丢失 | propose G5；SSOT §12.6；spec §5.3 强制约束 |
 | G6 | 四页前端（React 19+Vite 6）对照原型走查通过；干净机器单命令启动 | propose G6；SSOT §14 T0.2/T4.4 |
 
 ### 2.2 Non-Goals（溯源 propose §3.2）
 
-多用户/行列级权限/MCP 网关/BI 图表/并行下钻编排/血缘分析/指标平台/标准批量导入导出/ER 力导向自动布局/企业审计 SSO 多租户；不新增 `POST /queries/:id/retry`（评审项 29 关闭）；query_event 不设 retention（D12 关闭，见段 10 TODO）。
+多用户/行列级权限/MCP 网关/BI 图表/并行下钻编排/血缘分析/指标平台/标准批量导入导出/ER 力导向自动布局/企业审计 SSO 多租户；不新增 `POST /queries/:id/retry`；query_event 不设 retention（见段 10 TODO）。
 
 ---
 
@@ -73,7 +73,7 @@
 - **内容**：引擎调用（PyMySQL / clickhouse-connect）与 SQLite 写全部走 `anyio.to_thread`；checkpointer 用 `AsyncSqliteSaver`；FastAPI 端点与图节点全 async。
 - **理由**：同步驱动在 async 节点内会冻结事件循环（SSOT 风险 R7），SSE 心跳与多查询并发直接受害。
 - **替代**：换 async 引擎驱动（aiomysql 等）——被拒绝：Doris 仅 PyMySQL 兼容、clickhouse-connect 无官方 async；引入第二套连接栈增加方言矩阵维护面。
-- **证据**：SSOT §5.4-6、§16 R7（评审项 44）。
+- **证据**：SSOT §5.4-6、§16 R7。
 
 ### D-03 validate 执行序铁律 + 所验即所执
 - **内容**：validate 节点内固定顺序：Unicode 清洗 → R04 auto_limit **AST 注入** → **R15 优先** → R01-R14 → 标识符归一（`normalize_identifiers`→`qualify`）→ EXPLAIN 干跑（AST 去 LIMIT 副本，**干跑串永不进 execute**）。validate 之后任何模块不得重写 SQL；confirm_gate 展示串与 execute 执行串逐字相同（同一 `state.sql`）。
@@ -85,7 +85,7 @@
 - **内容**：B1 多语句 = `sqlglot.parse()` 过滤 None 后语句数 ≠1；B2 解析失败族 fail-closed（含 INTO OUTFILE/DUMPFILE 全语序、LOAD DATA [LOCAL] INFILE、INSTALL PLUGIN、DO、HANDLER）；B3 显式断言 `exp.Into`（唯一可解析形态 `INTO @var`，枚举文件变体防升级漂移）；B4 `exp.Describe` 且 `style=ANALYZE` 一律阻断（含包纯 SELECT）；B5 契约外语句族 CALL/DO（CALL 为不透明 `exp.Command`，由 B5 拦；USE/SET/KILL/GRANT/SYSTEM 可解析族留 R01 红+确认门兜底）。
 - **理由**：探针实测证明 PARSE_FAIL 覆盖面 > AST 枚举，fail-closed 是唯一安全默认；`parse_one` 静默取首条（SSOT R8）必须靠 B1 计数兜底。
 - **替代**：正则黑名单——被拒绝：注释/字符串/语序变体绕过面大，且无法覆盖方言差异。
-- **证据**：`.roundtable/evidence/probe_r2_out.txt` 实测输出（INTO 四语序全 PARSE_FAIL、`INTO @v`→exp.Into(Parameter(Var))、CALL→Command、DO/HANDLER→PARSE_FAIL、`SELECT 1;;SELECT 2`→`[Select,None,Select]`、EXPLAIN ANALYZE→Describe.style=ANALYZE）；SSOT §9.1。
+- **证据**：sqlglot 30.18 探针实测输出（INTO 四语序全 PARSE_FAIL、`INTO @v`→exp.Into(Parameter(Var))、CALL→Command、DO/HANDLER→PARSE_FAIL、`SELECT 1;;SELECT 2`→`[Select,None,Select]`、EXPLAIN ANALYZE→Describe.style=ANALYZE）；SSOT §9.1。
 
 ### D-05 双门 = langgraph interrupt + CAS resume
 - **内容**：clarify_gate/confirm_gate 用 `interrupt({type, payload})` 悬停，门负载进 checkpoint；裁决走 `POST /queries/:id/resume`（`{gate, choice?, approved?}`），**CAS：仅 `waiting_*` 态可 resume**（与 stop 互斥）。写操作 crash 续跑时此前 approved **不继承**，必须重过 confirm_gate。interrupt 前不得产生任何引擎/写库副作用。
@@ -96,17 +96,17 @@
 ### D-06 SSE = query_event 事件溯源重放（唯一耦合面）
 - **内容**：16 个业务事件全部先落 `query_event`（`PRIMARY KEY(query_id,seq)`，seq 单调）再推送；帧 `id: {query_id}:{seq}`；重连带 `Last-Event-ID` 增量、无头全量自 seq=1；连接级控制帧 `stream_resumed` 与心跳注释帧 `:hb`（每 `sse.heartbeat_s`=15s）不占 seq 不入表。前后端唯一耦合面 = `/api` + 该 SSE 流。
 - **理由**：事件落库使断连恢复、崩溃恢复、E5 快照三者共用同一事实源；result 批量行不入事件表（走 result_preview），单事件 ≤`sse.event_payload_kb`=16KB 截断标注。
-- **替代**：内存队列 + 断线丢弃——被拒绝：与 D03/续播/复核诉求根本冲突。
+- **替代**：内存队列 + 断线丢弃——被拒绝：与崩溃续跑/断连续播/复核诉求根本冲突。
 - **证据**：SSOT §10.3、§3.3、§5.4；spec §3.2。
 
 ### D-07 schema 供给 = 双路召回 RRF + 滞后带 + 一次二次供给
 - **内容**：FTS5 top-12（bm25 聚合到表级）+ 向量 top-4（distance≤0.35，FTS 命中 ≥6 表不触发向量）→ RRF k=60 按 table_id 去重 → `rrf_score DESC, table_name ASC` 确定性排序；库表 ≤30 或估算 ≤预算 → full 模式；模式切换滞后带 55-65% 保持上次模式；R13（online）且 `resupply_used=false` 时经 `need_tables` 回 supply 补表一次；检索失败降级 full 截断。
 - **理由**：双路互补（FTS 吃精确命名、向量吃语义），RRF 免调分；滞后带防模式抖动导致同会话注入漂移。
-- **替代**：单向量召回——被拒绝：中文 FTS 需应用层 bigram，单独任一路在 golden 上均不如融合（D01 评审已关闭此争议，SSOT §16 R3）。
+- **替代**：单向量召回——被拒绝：中文 FTS 需应用层 bigram，单独任一路在 golden 上均不如融合。
 - **证据**：SSOT §5.2 supply_schema、§4 `schema.*`；spec §4.6。
 
 ### D-08 向量层：fastembed 本地嵌入 + schema_vec 运行期建表
-- **内容**：fastembed + BAAI/bge-small-zh-v1.5（512 维，D01 定版）；`schema_vec` 不写死 migration，运行期按 `schema.embed_dim` 建表；换模型流程 = 改 setting → 重建 vec 表（期间 `schema.vector` 临时 off，降级纯 FTS）→ 完成自动恢复；FTS 表不动。权重首启缺失处置见段 10 TODO-1。
+- **内容**：fastembed + BAAI/bge-small-zh-v1.5（512 维）；`schema_vec` 不写死 migration，运行期按 `schema.embed_dim` 建表；换模型流程 = 改 setting → 重建 vec 表（期间 `schema.vector` 临时 off，降级纯 FTS）→ 完成自动恢复；FTS 表不动。权重首启缺失处置见段 10 TODO-1。
 - **理由**：嵌入维度随模型变，DDL 写死会锁死换模路径；降级纯 FTS 保证重建期可用。
 - **替代**：pgvector/外部向量库——被拒绝：本地单用户零依赖原则，sqlite-vec 足够（表级向量量级 ≤ 数千）。
 - **证据**：SSOT §3.2、§2.1、§4 `schema.embed_*`。
@@ -114,7 +114,7 @@
 ### D-09 提示词 8 段信封 + 5 步裁剪 + 预览同源
 - **内容**：信封 = system + dialect_card + memory + session_summary + schema + samples + metrics(命中) + question；输出预留 `min(4096, 25%×total_ctx)`，`total_ctx` 缺省 32768；超 `schema.budget_pct`(60%) 依次裁剪：①减样例 ②减枚举(top8→top4) ③retrieval 重建减表 ④减记忆条目（最旧未命中） ⑤尾部确定性截断。token 估算 `max(len//1.7 中文, tiktoken cl100k 英文)`，留 ±15-20% 余量。**组装函数唯一**：设置页组装预览与表详情提示词视图由同一 `llm/prompts.py` 生成，保证「与真实注入逐字一致」。
 - **理由**：预览同源消灭「预览≠注入」漂移；裁剪顺序把口径直接相关的记忆排在样例之后保留。
-- **替代**：前端拼装预览——被拒绝：双端实现必然漂移（评审项 20 已裁决）。
+- **替代**：前端拼装预览——被拒绝：双端实现必然漂移。
 - **证据**：SSOT §8.3、§10.4；FR-C4、FR-D8。
 
 ### D-10 密钥 Fernet + keyring 五款，fail-closed
@@ -126,13 +126,13 @@
 ### D-11 脱敏规则表统一三出口
 - **内容**：连接串→`[HOST]`/`[PORT]`、账号密码→`[USER]`/`[CREDENTIAL]`、IP 白名单仅放行 127.0.0.1/localhost、SQL 字面值→`?`；同一规则表（`sqlcheck/clean.py`）统一适用三出口：回喂 LLM 的错误、前端回显、query_event 落库。
 - **理由**：三出口任一漏脱敏即凭证外泄；单点实现避免规则漂移。
-- **替代**：各出口自管——被拒绝：漂移风险，评审项 48 已裁决收口。
+- **替代**：各出口自管——被拒绝：漂移风险。
 - **证据**：SSOT §12.5；spec §5.2。
 
 ### D-12 verify 规则层 + 全局共享 1 次回退额度
-- **内容**：规则层 5 检查（0 行 / 关键列全 NULL / 行数<EXPLAIN 估计 1% / 汇总对账偏差>0.1% / 分区裁剪仅记录），全过才 pass；「回退」共用全局唯一额度 `verify_fallback_used`（QueryState 字段），用后仍不过 → `result_unverified=true` 照常 END（琥珀「未验证」标注）；可选 LLM 层 `feature.verify_llm` 默认关，local_only 置灰（D07），输入截断前 5 行 × 每格 50 字符。
-- **理由**：回退无限次会放大延迟与幻觉循环；全局 1 次在「校验过了才停止」与体验间取平衡（D09 裁决）。
-- **替代**：每规则各 1 次回退——被拒绝：多规则连退语义混乱且成本不可控（评审项已裁决）。
+- **内容**：规则层 5 检查（0 行 / 关键列全 NULL / 行数<EXPLAIN 估计 1% / 汇总对账偏差>0.1% / 分区裁剪仅记录），全过才 pass；「回退」共用全局唯一额度 `verify_fallback_used`（QueryState 字段），用后仍不过 → `result_unverified=true` 照常 END（琥珀「未验证」标注）；可选 LLM 层 `feature.verify_llm` 默认关，local_only 置灰，输入截断前 5 行 × 每格 50 字符。
+- **理由**：回退无限次会放大延迟与幻觉循环；全局 1 次在「校验过了才停止」与体验间取平衡。
+- **替代**：每规则各 1 次回退——被拒绝：多规则连退语义混乱且成本不可控。
 - **证据**：SSOT §9.2、§5.1；spec §4.2。
 
 ### D-13 修正回路 ≤3 轮 + SQL 指纹振荡检测
@@ -143,7 +143,7 @@
 
 ### D-14 记忆双层 + 水位线合并 + 压缩先抢救（flush 失败压缩推迟）
 - **内容**：流水账 `memory_log` 追加只写（kind: caliber/correction/quirk/preference）；总账 `memory`（scope global/datasource，topic 分组，enabled 开关即停注，≤`memory.max_tokens`=4000，超量裁最旧未命中）；`memory_watermark.last_log_id` 增量合并，最小间隔 `memory.consolidate_min_gap_min`=30min，走 route.ai 小模型。**三入口**：澄清裁决/假设修正/存样例同步直写流水账（零损耗）；查询完成异步 flush（失败静默下轮重试）；人工直管总账。会话 >`session.compact_msgs`=40 触发压缩：先把待压缩轮次事实抢救进流水账，**flush 失败则压缩推迟**（spec §5.3 强制约束），保留最近 `session.keep_msgs`=6 轮完整，其余并入 `session.summary` 滚动摘要（旧摘要参与新摘要，不重复提取记忆）。
-- **理由**：无损事实（流水账/底稿）与有损摘要（滚动链）分离；压缩抢救衔接参考方案 flushBeforeCompact（SSOT §12.6 映射表）。
+- **理由**：无损事实（流水账/底稿）与有损摘要（滚动链）分离；压缩前先 flush 抢救事实，避免压缩丢失事实（SSOT §12.6）。
 - **替代**：单层记忆 + 全量历史注入——被拒绝：token 预算与 40 轮长会话超限不可行。
 - **证据**：SSOT §12.6、§3.4；spec §5.3 N7 强制约束。
 
@@ -157,15 +157,15 @@
 - **内容**：execute 在**纯 SELECT** 成功时同步全量落盘 `data/exports/{query_id}.csv`（UTF-8 BOM + RFC4180，首行表头）；GET 以 FileResponse 流式返回并回显 `data_max_time`；TTL `export.ttl_h`=24h 定时清理 + `export.max_total_mb`=2048 超量 LRU + 启动清扫孤儿文件；exports/ 不入备份、gitignore，密级等同 result_preview；前端导出成功 toast 带「文件保留 24 小时」（TODO-N9 默认假设落位）。
 - **理由**：全量结果驻留内存不可行（大结果集）；瞬态语义防止无限堆积。
 - **替代**：按需重新执行生成 CSV——被拒绝：数据时效漂移（复核要求与执行当时一致）。
-- **证据**：SSOT §10.5（D14）、§12.7；propose §8 #8。
+- **证据**：SSOT §10.5、§12.7；propose §8 #8。
 
 ### D-17 备份 = VACUUM INTO 滚动 + 恢复语义 ≠ 重启
-- **内容**：每 4h `VACUUM INTO '{backup.dir}/app-{yyyyMMdd-HHmm}.db'`，keep=10；入备份仅 app.db（含 query_event，密级标注「SQL 字面量与事件溯源明文」）；剥离密文（写 NULL）；`backup.encrypt=true` 时加密备份文件（不覆盖 exports/）；**恢复后 running 态一律 failed+标注，不适用 D03 自动续跑**，UI 恢复提示明示。
+- **内容**：每 4h `VACUUM INTO '{backup.dir}/app-{yyyyMMdd-HHmm}.db'`，keep=10；入备份仅 app.db（含 query_event，密级标注「SQL 字面量与事件溯源明文」）；剥离密文（写 NULL）；`backup.encrypt=true` 时加密备份文件（不覆盖 exports/）；**恢复后 running 态一律 failed+标注，不适用崩溃自动续跑**，UI 恢复提示明示。
 - **理由**：VACUUM INTO 是 SQLite 在线一致性备份原语；checkpoints 绑本地进程，恢复后图状态不存在，failed+标注是唯一诚实语义。
 - **替代**：文件拷贝——被拒绝：WAL 下拷贝可能撕裂。
 - **证据**：SSOT §12.3、§3.3 注；spec §2.14。
 
-### D-18 ER 图谱摆位存储裁决：新增 migration 0005 `graph_layout`（TODO-N1 关闭）
+### D-18 ER 图谱摆位存储裁决：新增 migration 0005 `graph_layout`
 - **内容**：新增 `migrations/0005_graph_layout.sql`：
   ```sql
   CREATE TABLE graph_layout(
@@ -175,27 +175,27 @@
   );
   ```
   归入 app.db（随备份）；手工摆位后保存，读取缺失时前端按表名字典序确定性平铺。
-- **理由**：数据源设计 §6 明确「手工摆位 + 记忆位置（存 graph_layout 表）」，SSOT migrations 0001~0004 无此表属遗漏（propose N1）；独立小表不污染 table_meta。
+- **理由**：数据源配套设计明确「手工摆位 + 记忆位置（存 graph_layout 表）」，SSOT migrations 0001~0004 无此表属遗漏（propose N1）；独立小表不污染 table_meta。
 - **替代**：存 setting 键值——被拒绝：setting 语义是全局配置，按 datasource 的实体数据混进去破坏备份/清理语义。
-- **证据**：数据源模块设计.md §6 非目标末段；propose §6.4 N1、§8 #1。**置信度：高**（裁决级；字段形状为新建设计，无旧代码冲突）。
+- **证据**：propose §6.4 N1、§8 #1。**置信度：高**（字段形状为新建设计，无旧代码冲突）。
 
-### D-19 `metric_standard.filter` 列名保留 + 全链路引号/参数化（TODO-N3 关闭）
+### D-19 `metric_standard.filter` 列名保留 + 全链路引号/参数化
 - **内容**：保留 SSOT DDL 列名 `filter` 不改；所有触及该列的 SQL 经 sqlglot 构造或显式双引号/反引号（按方言），ORM 层（store/models.py）字段访问统一走参数化；代码评审 checklist 增列「metric_standard.filter 必须引号」。
 - **理由**：SSOT 为唯一权威，技术设计不擅改 DDL；`filter` 在 MySQL/Doris/CH 非保留字（仅在 `FILTER (WHERE ...)` 聚合语法上下文敏感），引号化即可消除歧义。
-- **替代**：改名 `filter_desc`（数据源模块设计.md §3 用名）——被拒绝：会造成 SSOT DDL 与代码双源漂移，违反 SSOT 优先裁决（propose §8 #2 同款先例）。
-- **证据**：SSOT §3.1 DDL；数据源模块设计.md §3（`filter_desc` 为被否决的漂移名）；propose §6.4 N3。**置信度：高**。
+- **替代**：改名 `filter_desc`——被拒绝：会造成 SSOT DDL 与代码双源漂移，违反 SSOT 优先原则（propose §8 #2 同款先例）。
+- **证据**：SSOT §3.1 DDL；propose §6.4 N3。**置信度：高**。
 
 ### D-20 前端状态分层：TanStack Query = REST，zustand = SSE 装配态 + UI 态
 - **内容**：REST 数据（sessions/queries/samples/datasources/settings…）全部归 TanStack Query（缓存/失效/重试）；zustand 仅存 SSE 装配态（queryStore S1-S6：MessageModel 同构、appliedSeq、横幅显隐）与纯 UI 态（抽屉/面板开关）；终态 invalidate 三键（sessions/queries/samples）；门裁决 optimistic 回显。
 - **理由**：双库各管一类事实，避免 SSE 增量与 REST 快照双写冲突；V4 守则进 CONVENTIONS.md。
-- **替代**：单一 zustand 管全部——被拒绝：REST 缓存/失效语义需重造，评审项 32 已裁决分层。
-- **证据**：SSOT §11.2 守则 V1-V4；prototype-design §1.3（data.json envelope 即 API 形状）。
+- **替代**：单一 zustand 管全部——被拒绝：REST 缓存/失效语义需重造。
+- **证据**：SSOT §11.2 守则 V1-V4。
 
 ### D-21 前端装配五步 + E5 快照不依赖 checkpoint
 - **内容**：进会话 ①`GET /sessions/:id/queries` 快照 hydrate（query+result_preview+query_event 聚合，含 `last_seq` 与 `clarify_choice`，DAO 聚合防 N+1）②running/waiting_* 挂 SSE ③双模重连归一（Last-Event-ID 增量/无头全量）④seq 幂等去重（stream_resumed 不入 appliedSeq；乱序 fail-loud 触发 REST resync）⑤横幅策略（增量亮「已从断点续播」；崩溃恢复亮「已自动恢复」，无手动续跑按钮）。
 - **理由**：E5 快照数据源不含 checkpoint，与 D-01 双库归属对偶——checkpoint 丢失（备份恢复）时历史仍可完整渲染。
 - **替代**：前端只挂 SSE 等推送——被拒绝：刷新/断连后历史空洞。
-- **证据**：SSOT §11.2、§10.1 E5；prototype-design §3.2 F5。
+- **证据**：SSOT §11.2、§10.1 E5。
 
 ### D-22 业务 ID 与幂等键统一 ULID
 - **内容**：`s_`/`q_` 前缀 + ULID（Crockford Base32，26 字符，毫秒前缀可排序）；`client_request_id = thread_id = query_id` 三位一体；POST /queries 同 client_request_id 重发返回同一 query_id 不重复执行；门裁决与 stop 均 CAS。
@@ -222,12 +222,12 @@ configs/dialects/*.yaml  能力卡 [D-41]   scripts/dev.py 单命令 [D-42]   te
 ```
 
 ### D-30 `app/api/`（L1 路由层）
-- **职责**：HTTP 契约实现（contracts.md C1 全表）；Bearer 校验依赖注入；E5 快照聚合；SSE 端点（sse.py：事件桥接 + Last-Event-ID 续播 + 心跳）；resume/stop CAS 入口。
-- **输入**：HTTP 请求（Pydantic 校验）；**输出**：JSON envelope `{code, message, data}`（形状证据：prototype `data/data.json`，prototype-design §1.3）/ SSE 帧 / FileResponse。
+- **职责**：HTTP 契约实现（REST 全表）；Bearer 校验依赖注入；E5 快照聚合；SSE 端点（sse.py：事件桥接 + Last-Event-ID 续播 + 心跳）；resume/stop CAS 入口。
+- **输入**：HTTP 请求（Pydantic 校验）；**输出**：JSON envelope `{code, message, data}` / SSE 帧 / FileResponse。
 - **边界**：不含业务规则；查询类写操作只调 runner，不直接碰 store SQL（分层 D1 补丁：纯 CRUD/只读可直达 store）。
 
 ### D-31 `app/graph/`（L2 编排层）
-- **职责**：`state.py`（QueryState/RiskItem/CorrectionRound TypedDict，contracts.md C5）；`nodes.py`（8 节点：supply_schema/generate/clarify_gate/validate/confirm_gate/execute/verify_result/correct，规格 = SSOT §5.2 表逐行实现）；`edges.py`（§5.3 条件边）；`runner.py`（编译图 + AsyncSqliteSaver + 事件落库 query_event + SSE 桥接 + 双库写入顺序执行 + 启动清扫自动续跑 D03）。
+- **职责**：`state.py`（QueryState/RiskItem/CorrectionRound TypedDict）；`nodes.py`（8 节点：supply_schema/generate/clarify_gate/validate/confirm_gate/execute/verify_result/correct，规格 = SSOT §5.2 表逐行实现）；`edges.py`（§5.3 条件边）；`runner.py`（编译图 + AsyncSqliteSaver + 事件落库 query_event + SSE 桥接 + 双库写入顺序执行 + 启动清扫自动续跑）。
 - **输入**：POST /queries（幂等键）/ resume 裁决 / stop；**输出**：QueryState 迁移 + 16 事件流。
 - **边界**：langgraph 唯一 import 点（分层 D3）；不直接拼接 SQL 文本（D4）。
 
@@ -271,10 +271,10 @@ configs/dialects/*.yaml  能力卡 [D-41]   scripts/dev.py 单命令 [D-42]   te
 
 ### D-40 `web/`（前端工程）
 - **职责**：四页（QueryPage/DatasourcesPage/SamplesPage/SettingsPage）+ 组件树按 SSOT §11.1 落地；`theme/tokens.css` 唯一 token 来源（值取自原型基准，Tailwind @theme 桥接，stylelint 禁裸 hex）；`api/client.ts`（fetch 封装 + Bearer + SSE reader 带 Last-Event-ID）；stores 三分层（D-20）；装配五步（D-21）；虚拟化守则 V1（ResultTable >100 行，行高 32/overscan 10）V2（Stream >200 条 + ResizeObserver + 底部锚定）。
-- **证据**：SSOT §11.1-§11.3；prototype-design §2 交互↔需求矩阵（112 锚点）；原型 `prototype/*.html`。
+- **证据**：SSOT §11.1-§11.3；原型 `prototype/*.html`。
 
 ### D-41 `configs/dialects/{doris,mysql,clickhouse}.yaml`
-- 能力卡三份：engine/detected_version/supports/notes/forbidden（forbidden 与 R15 双层覆盖，评审项 22）；doris.yaml 默认内容即 SSOT §8.2 原文。注册探测覆盖 detected_version；R08 函数比对与干跑能力（explain≠none）以此为据。
+- 能力卡三份：engine/detected_version/supports/notes/forbidden（forbidden 与 R15 双层覆盖）；doris.yaml 默认内容即 SSOT §8.2 原文。注册探测覆盖 detected_version；R08 函数比对与干跑能力（explain≠none）以此为据。
 
 ### D-42 `scripts/dev.py` 与交付形态
 - 单命令：uvicorn app.main + 静态 web/dist 内嵌 + 首启（生成 server.token、初始化 data/ 0600、跑 migrations、检测 bge 权重存在性）；环境变量 `AITOSQL_PORT`/`AITOSQL_DATA`/`AITOSQL_FERNET_KEY`/`{PROVIDER}_API_KEY`（SSOT §18.2）。干净机器依赖策略见段 10 TODO-2。
@@ -286,7 +286,7 @@ configs/dialects/*.yaml  能力卡 [D-41]   scripts/dev.py 单命令 [D-42]   te
 
 ## 段 5 · 接口设计（契约先行）
 
-> 完整字段级契约见同目录 `contracts.md`（C1 REST 全表 / C2 查询幂等 / C3 SSE 十六事件 / C4 生成契约 JSON Schema / C5 QueryState / C6 数据契约 / C7 setting 键 / C8 错误码 / C9 复核包·出境·脱敏 / C10 前端耦合面）。此处列关键内部接口签名（Python），签名语义均来自 SSOT §5.2 节点规格；**具体类型细节为设计建议，置信度「中」的部分逐条标注**。
+> 字段级契约（REST 全表 / 查询幂等 / SSE 十六事件 / 生成契约 JSON Schema / QueryState / 数据契约 / setting 键 / 错误码 / 复核包·出境·脱敏 / 前端耦合面）以 SSOT §6/§10/§18 等章节为准，不在此重复。此处列关键内部接口签名（Python），签名语义均来自 SSOT §5.2 节点规格；**具体类型细节为设计建议，置信度「中」的部分逐条标注**。
 
 ```python
 # graph/nodes.py —— 8 节点统一形态（langgraph 节点函数）
@@ -318,25 +318,25 @@ def hard_block_r15(sql: str, *, dialect: str) -> R15Hit | None: ...   # B1-B5 �
 
 # exec/runner.py
 async def run_query(sql: str, *, ds: Datasource, timeout_s: int,
-                    on_meta: MetaSink) -> ExecResult: ...   # ExecResult = exec_meta + result_preview_id（ contracts C5 对齐）
+                    on_meta: MetaSink) -> ExecResult: ...   # ExecResult = exec_meta + result_preview_id
 
 # store/memory.py
 def flush_sync(kind: str, fact: str, *, datasource_id: int | None, source_query_id: str | None) -> None: ...
 async def consolidate(*, force: bool = False) -> dict: ...   # 返回 {merged, dropped}（§10.1 memory/consolidate 对齐）
 ```
 
-**调用链闭环**：api/queries.py → runner（编译图）→ nodes → L3 模块（supply→retrieval；generate→llm；validate→sqlcheck；execute→exec；verify→verify；correct→llm）→ store 持久化；事件经 runner → query_event → sse.py → 前端 client.ts。凡新增内部接口在编码期定型后须回写 contracts.md。
+**调用链闭环**：api/queries.py → runner（编译图）→ nodes → L3 模块（supply→retrieval；generate→llm；validate→sqlcheck；execute→exec；verify→verify；correct→llm）→ store 持久化；事件经 runner → query_event → sse.py → 前端 client.ts。新增内部接口在编码期定型后须回写本节签名。
 
 ---
 
 ## 段 6 · 数据设计
 
-> DDL 原文以 SSOT §3.1-§3.4 为准（migrations 0001~0004 共 16 张表/视图/索引 + 0004 两个 ALTER），本次新增 0005（D-18）。字段级数据字典见 spec.md §2 与 contracts.md C6，此处只列设计要点。
+> DDL 原文以 SSOT §3.1-§3.4 为准（migrations 0001~0004 共 16 张表/视图/索引 + 0004 两个 ALTER），另新增 0005（D-18）。字段级数据字典见 spec.md §2，此处只列设计要点。
 
 1. **实体分组**：连接与元数据（datasource/table_meta/column_meta/relation）、语义层全局四表（field_standard/dimension_standard/dimension_value/metric_standard）、建议队列（ai_suggestion）、会话与查询（session/query/result_preview/clarify_pref）、事件溯源（query_event，PK(query_id,seq)）、样例（sample）、提供商与配置（provider/setting）、检索层（schema_fts FTS5 虚拟表 + 运行期 schema_vec）、记忆层（memory_log/memory/memory_watermark + session.summary/summary_upto）、图谱摆位（graph_layout，新增）。
 2. **关键约束**：`UNIQUE(datasource_id,name)`（table_meta）、`UNIQUE(table_id,name)`（column_meta）、`UNIQUE(datasource_id,term)`（clarify_pref）、`UNIQUE(datasource_id,question_norm)` 索引（sample）、`CHECK(id=1)`（memory_watermark 单行）、`ON DELETE CASCADE`（query_event 随 query 级联）。
 3. **索引**：`idx_session_list(archived, pinned DESC, updated_at DESC)`、`idx_column_table(table_id)`、`idx_sample_norm(datasource_id, question_norm)`；query_event 主键即查询序。
-4. **合并策略**：重摄取只刷物理属性（comment_db/row_estimate/type），comment_custom/field_standard_id/已确认 relation 永不覆盖；字段消失 → 绑定解除 + 样例 stale（stale_reason 记字段名）（数据源设计 §3；SSOT §12.1）。
+4. **合并策略**：重摄取只刷物理属性（comment_db/row_estimate/type），comment_custom/field_standard_id/已确认 relation 永不覆盖；字段消失 → 绑定解除 + 样例 stale（stale_reason 记字段名）（SSOT §12.1）。
 5. **密级标注**：result_preview/exports（真实数据行）、query_event（SQL 字面量明文）、api_key_enc/password_enc（Fernet 密文，备份写 NULL）、checkpoints.db（最大明文聚合体，不入备份）。
 6. **迁移注意**：SQLite ALTER 能力有限，0004 已用 ADD COLUMN；0005 新建表无降级需求（greenfield）；迁移执行器幂等 + 失败拒启（D-39）。
 
@@ -393,7 +393,7 @@ sequenceDiagram
     end
 ```
 
-### 7.3 崩溃恢复与断连（S6，D03）
+### 7.3 崩溃恢复与断连（S6）
 
 ```mermaid
 sequenceDiagram
@@ -431,7 +431,7 @@ sequenceDiagram
 | E7 | 引擎执行报错 | 脱敏（D-11）→ 回喂 correct；≤3 轮或指纹振荡 → 终止照常交付最近版标 failed | 修正时间线逐轮可展开 | SSOT §5.2/§9.2 |
 | E8 | verify 规则层不过 | 消耗全局唯一回退额度重试一次；仍不过照常交付 | 琥珀「未验证」块 + 放宽追问 | D-12 |
 | E9 | SSE 断连 | Last-Event-ID 增量/无头全量续播；seq 幂等；乱序 fail-loud → REST resync | 琥珀横幅「已从断点续播」 | D-06/D-21 |
-| E10 | 进程崩溃 | 启动清扫七条（D03）；写操作续跑重过门；checkpoint 缺失 failed+标注 | 绿横幅「已自动恢复」 | D-01/D-05 |
+| E10 | 进程崩溃 | 启动清扫七条；写操作续跑重过门；checkpoint 缺失 failed+标注 | 绿横幅「已自动恢复」 | D-01/D-05 |
 | E11 | stop 与 resume 竞态 | CAS（仅 waiting_* 可 resume）；stop → 引擎 KILL（CH 无通道仅断连） | 停止即停；CH UI 注明服务端可能继续 | SSOT §5.4-3/4 |
 | E12 | asyncio 任务取消（CancelledError） | 节点内不吞取消；取消传播即停管线并落 stopped 事件；后台任务（flush/合并/备份）独立 task 隔离，失败仅记日志 | — | 设计约束（asyncio 语义） |
 | E13 | keyring 不可用 / 密钥解密失败 | fail-closed 拒启 / E4001 提示重新录入（不迁移） | 启动报错 / 设置页提示 | SSOT §12.4 |
@@ -447,12 +447,12 @@ sequenceDiagram
 
 ## 段 9 · 风险与权衡
 
-> 完整 12 维度评估见同目录 `arch-risk.md`；此处列顶层权衡。
+> 此处列顶层权衡。
 
 1. **可复核性 vs 延迟**：全量事件落库 + CSV 同步落盘增加 execute 延迟——权衡接受，验收时 execute 延迟含落盘时间单列（SSOT §10.5 T4.3 注记）。Mitigation：事件写批量 flush、CSV 写文件流式。
-2. **本地小模型成功率 vs 零出境**（arch-risk R1）：golden 基线先行 + 修正路由可换强模型 + 澄清门兜底；verify_llm 在砍项顺序首位（先砍 verify_llm 后 followups）。
-3. **LangGraph interrupt × SSE × 崩溃恢复交互复杂度**（arch-risk R2）：以 T4.2 五条故障注入为硬验收，不过不发布。
-4. **双库一致性窗口**（arch-risk R3）：app.db 先提交的窗口期内崩溃会出现「终态已落、checkpoint 未落」——语义安全（启动清扫按 checkpoint 缺失降级 failed+标注），属于有意取舍而非缺陷。
+2. **本地小模型成功率 vs 零出境**：golden 基线先行 + 修正路由可换强模型 + 澄清门兜底；verify_llm 在砍项顺序首位（先砍 verify_llm 后 followups）。
+3. **LangGraph interrupt × SSE × 崩溃恢复交互复杂度**：以 T4.2 五条故障注入为硬验收，不过不发布。
+4. **双库一致性窗口**：app.db 先提交的窗口期内崩溃会出现「终态已落、checkpoint 未落」——语义安全（启动清扫按 checkpoint 缺失降级 failed+标注），属于有意取舍而非缺陷。
 
 ---
 
@@ -468,20 +468,4 @@ sequenceDiagram
 | TODO-6 | Doris `EXPLAIN` 文本 cardinality 正则的具体形态 | golden 固化样本先行（SSOT §9.3 已定策略） | D-35 | T1.4 取真实 Doris 输出固化 | 中 |
 | TODO-7 | fastembed 嵌入吞吐（500 表摄取 <60s 口径） | CPU 批处理 + 摄取并发 2；不达标时降级跳过向量（FTS only）并提示 | D-33；T4.3 | T1.1 实测 | 中 |
 
-> 上游 TODO 处置状态：N1→D-18 关闭；N3→D-19 关闭；N2 已裁决（以 SSOT 为准，开发走查核对）；N6/N9 已由原型设计按默认假设落地（prototype-design §5.4）；N7→D-14 强制约束关闭；N4/N5/N8 转本表 TODO-1/2/3。
-
----
-
-## 附：自检锚点（Q1-Q9）
-
-| # | 结论 | 证据 |
-|---|------|------|
-| Q1 决策有深度 | 通过 | D-01~D-22 每条含理由+替代+拒绝原因+证据 |
-| Q2 接口有规格 | 通过 | 段 5 内部签名 + contracts.md C1-C10 字段级 |
-| Q3 流程有编排 | 通过 | 段 7 三张时序图，节点与 D-31/SSOT §5.2 对等 |
-| Q4 代码有验证 | 通过 | 工作区无产品代码（glob 实证），无「复用已有」断言；探针证据逐条引用 .roundtable/evidence |
-| Q5 约束有来源 | 通过 | 段 1.3 每条带来源列 |
-| Q6 风险有缓解 | 通过 | 段 9 + arch-risk.md 登记册每条含缓解 |
-| Q7 时序图完整 | 通过 | 主链路/双门/恢复三图覆盖核心流程 |
-| Q8 待确认闭环 | 通过 | 段 10 汇总 TODO-1~7，上游 N1-N9 全部有去向 |
-| Q9 输出有密度 | 通过 | 场景↔决策↔模块↔契约↔异常交叉引用 |
+> 上游待确认项（propose §6.4 N1-N9）去向：N1→D-18；N3→D-19；N2 以 SSOT §3.1 为准；N6/N9 按默认假设落地；N7→D-14 强制约束；N4/N5/N8 转本表 TODO-1/2/3。
