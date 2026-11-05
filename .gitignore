@@ -26,6 +26,7 @@ web/pnpm-lock.yaml
 .idea/
 
 # ---- 内部过程文档（不随仓库公开）----
+/docs/
 归档/
 参考文档/
 对比分析-DataAgent流程图.md
